@@ -90,6 +90,8 @@ public sealed class DemandeConge : DefinitionSentier
 
 Le guide complet du constructeur (nœuds, branches, paramètres, tableau des défauts, aide-mémoire) est dans [docs/constructeur.md](docs/constructeur.md).
 
+Ce que le client doit obligatoirement faire, et à quoi servent les abstractions facultatives (`IHorloge`, `IContexteUtilisateur`, intercepteurs…) : [docs/integration-client.md](docs/integration-client.md).
+
 `Construire()` valide la définition (codes uniques, un début, au moins une fin, liens existants, nœuds atteignables, décision avec branche conditionnelle et « sinon », attente avec au moins un déclencheur et au plus une échéance, variables référencées déclarées et typées) et lève `DefinitionInvalideException` avec la liste des erreurs.
 
 `ISuiviSentier.ExporterDiagrammeAsync` (ou `ExportateurMermaid.Exporter`) produit un diagramme **Mermaid** de la définition.
