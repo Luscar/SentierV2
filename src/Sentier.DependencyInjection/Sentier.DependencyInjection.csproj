@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sentier.DependencyInjection</RootNamespace>
+    <PackageId>Sentier.DependencyInjection</PackageId>
+    <Description>Sentier : extension d'enregistrement AddSentier.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sentier.Core\Sentier.Core.csproj" />
+    <ProjectReference Include="..\Sentier.Persistance.Dapper\Sentier.Persistance.Dapper.csproj" />
+    <ProjectReference Include="..\Sentier.Persistance.Oracle\Sentier.Persistance.Oracle.csproj" />
+    <ProjectReference Include="..\Sentier.Persistance.Sqlite\Sentier.Persistance.Sqlite.csproj" />
+  </ItemGroup>
+
+</Project>
