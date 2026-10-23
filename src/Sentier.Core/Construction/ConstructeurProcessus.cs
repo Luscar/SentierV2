@@ -5,17 +5,18 @@ namespace Sentier.Definitions;
 
 /// <summary>
 /// Constructeur fluide d'une définition de processus. Enchaîner deux nœuds crée automatiquement
-/// la transition entre eux ; les branches s'écrivent en blocs imbriqués ou en liens <c>Vers</c>.
+/// la transition entre eux ; les branches s'écrivent en blocs imbriqués (<c>Alors</c>) ou en liens
+/// (<c>Vers</c>). Le nœud de début est implicite.
 /// </summary>
 /// <example>
 /// <code>
 /// ConstructeurProcessus.Nouveau("demande-conge", "Demande de congé")
-///     .Variables(NbJours, Decision)
-///     .Debut()
+///     .Variables(NbJours, Solde)
 ///     .Systemique&lt;CalculerSolde&gt;("calculer-solde")
-///     .Decision("solde-suffisant", d => d
-///         .Si&lt;SoldeSuffisant&gt;("oui", alors: b => b.Interactif("approbation", "Approuver la demande"))
-///         .Sinon(alors: b => b.Fin("refusee")))
+///     .Decision("solde-suffisant", d =&gt; d
+///         .Si&lt;SoldeSuffisant&gt;(p =&gt; p.Variables(NbJours, Solde))
+///         .Sinon(b =&gt; b.Fin("refusee")))
+///     .Interactif("approbation", "Approuver la demande")
 ///     .Fin("approuvee")
 ///     .Construire();
 /// </code>
@@ -86,8 +87,11 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
         return this;
     }
 
-    /// <summary>Déclare le nœud de début (premier nœud du processus).</summary>
-    public ConstructeurProcessus Debut(string code = "debut")
+    /// <summary>
+    /// Déclare le nœud de début. Facultatif : sans lui, un début de code <c>debut</c> est
+    /// ajouté devant le premier nœud. À n'écrire que pour donner un autre code.
+    /// </summary>
+    public ConstructeurProcessus Debut(string code = CodeDebut)
     {
         if (Sequence.Elements.Count > 0)
         {
@@ -103,9 +107,9 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
     {
         var erreurs = new List<string>(Etat.Erreurs);
         var principale = Etat.Principale;
-        if (principale.Elements.Count == 0 || principale.Elements[0].Noeud is not NoeudDebut)
+        if (principale.Elements.Count == 0)
         {
-            erreurs.Add("Le processus doit commencer par Debut(...).");
+            erreurs.Add("Le processus ne déclare aucun nœud.");
         }
 
         var transitions = new List<Transition>();
@@ -225,6 +229,9 @@ public sealed class ConstructeurBloc : ConstructeurSequence<ConstructeurBloc>
 /// <typeparam name="TSelf">Type concret du constructeur, pour le chaînage.</typeparam>
 public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequence<TSelf>
 {
+    /// <summary>Code du nœud de début implicite.</summary>
+    public const string CodeDebut = "debut";
+
     private protected ConstructeurSequence(EtatConstruction etat, SequenceEnConstruction sequence)
     {
         Etat = etat;
@@ -251,7 +258,7 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
     {
         var constructeur = new ConstructeurAttente();
         configuration(constructeur);
-        return Ajouter(constructeur.Creer(code), constructeur.Branches);
+        return Ajouter(constructeur.Creer(code), constructeur.Branches, constructeur.Erreurs);
     }
 
     /// <summary>Raccourci : attente d'un seul délai.</summary>
@@ -259,13 +266,22 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
 
     /// <summary>Raccourci : attente d'un seul signal.</summary>
     public TSelf AttendreSignal(string code, string nomSignal, Action<OptionsSignal>? options = null)
-        => Attente(code, a => a.Signal(nomSignal, options: options));
+        => Attente(code, a => a.Signal(nomSignal, options));
 
-    /// <summary>Nœud interactif : crée une tâche dans le bassin du client.</summary>
-    public TSelf Interactif(string code, string nomTache, Action<ConstructeurInteractif>? configuration = null)
+    /// <summary>Nœud interactif : crée une tâche nommée d'après le code du nœud.</summary>
+    public TSelf Interactif(string code) => Interactif(code, code);
+
+    /// <summary>Nœud interactif : crée une tâche portant le nom <paramref name="nomTache"/>.</summary>
+    public TSelf Interactif(string code, string nomTache) => Interactif(code, nomTache, _ => { });
+
+    /// <summary>Nœud interactif nommé d'après son code, avec sa configuration (rôle, assigné, données, commandes).</summary>
+    public TSelf Interactif(string code, Action<ConstructeurInteractif> configuration) => Interactif(code, code, configuration);
+
+    /// <summary>Nœud interactif avec le nom de la tâche et sa configuration (rôle, assigné, données, commandes).</summary>
+    public TSelf Interactif(string code, string nomTache, Action<ConstructeurInteractif> configuration)
     {
         var constructeur = new ConstructeurInteractif();
-        configuration?.Invoke(constructeur);
+        configuration(constructeur);
         return Ajouter(constructeur.Creer(code, nomTache));
     }
 
@@ -274,15 +290,18 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
     {
         var constructeur = new ConstructeurDecision();
         branches(constructeur);
-        return Ajouter(new NoeudDecision { Code = code }, constructeur.Branches);
+        return Ajouter(new NoeudDecision { Code = code }, constructeur.Branches, constructeur.Erreurs);
     }
 
-    /// <summary>Nœud sous-processus : démarre une instance enfant.</summary>
-    public TSelf SousProcessus(string code, string cleProcessus, Action<ConstructeurSousProcessus>? configuration = null)
+    /// <summary>Nœud sous-processus : démarre une instance enfant sur la clé d'affaire du parent ; à sa fin, mène au nœud suivant.</summary>
+    public TSelf SousProcessus(string code, string cleProcessus) => SousProcessus(code, cleProcessus, _ => { });
+
+    /// <summary>Nœud sous-processus avec sa configuration (clé d'affaire, mappages, branches par code de fin).</summary>
+    public TSelf SousProcessus(string code, string cleProcessus, Action<ConstructeurSousProcessus> configuration)
     {
         var constructeur = new ConstructeurSousProcessus();
-        configuration?.Invoke(constructeur);
-        return Ajouter(constructeur.Creer(code, cleProcessus), constructeur.Branches);
+        configuration(constructeur);
+        return Ajouter(constructeur.Creer(code, cleProcessus), constructeur.Branches, constructeur.Erreurs);
     }
 
     /// <summary>Nœud de fin ; son code est le code de fin de l'instance.</summary>
@@ -334,8 +353,13 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
         return Moi;
     }
 
-    private protected TSelf Ajouter(Noeud noeud, IReadOnlyList<BrancheDeclaree>? branches = null)
+    private protected TSelf Ajouter(Noeud noeud, IReadOnlyList<BrancheDeclaree>? branches = null, IReadOnlyList<string>? erreurs = null)
     {
+        if (noeud is not NoeudDebut && Sequence == Etat.Principale && Sequence.Elements.Count == 0)
+        {
+            Ajouter(new NoeudDebut { Code = CodeDebut });
+        }
+
         if (string.IsNullOrWhiteSpace(noeud.Code))
         {
             Etat.Erreurs.Add($"Un nœud {noeud.Type} n'a pas de code.");
@@ -349,16 +373,16 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
         Sequence.Elements.Add(element);
         Etat.TousLesElements.Add(element);
 
+        foreach (var erreur in erreurs ?? [])
+        {
+            Etat.Erreurs.Add($"Nœud '{noeud.Code}' : {erreur}");
+        }
+
         if (branches is not null)
         {
             element.Branches = [];
             foreach (var declaree in branches)
             {
-                if (declaree.Bloc is not null && declaree.Lien is not null)
-                {
-                    Etat.Erreurs.Add($"La branche '{declaree.NomSortie}' du nœud '{noeud.Code}' déclare à la fois un bloc et un lien.");
-                }
-
                 var branche = new BrancheEnConstruction(declaree.NomSortie)
                 {
                     Lien = declaree.Lien,
@@ -423,9 +447,15 @@ internal sealed class BrancheEnConstruction(string nomSortie)
 }
 
 /// <summary>Branche telle que déclarée par l'auteur, avant construction de son bloc.</summary>
-internal sealed record BrancheDeclaree(
-    string NomSortie,
-    Action<ConstructeurBloc>? Bloc,
-    string? Lien,
-    AppelRequete? Requete = null,
-    bool EstSinon = false);
+internal sealed class BrancheDeclaree(string nomSortie)
+{
+    public string NomSortie { get; set; } = nomSortie;
+
+    public Action<ConstructeurBloc>? Bloc { get; set; }
+
+    public string? Lien { get; set; }
+
+    public AppelRequete? Requete { get; init; }
+
+    public bool EstSinon { get; init; }
+}

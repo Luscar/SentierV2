@@ -17,7 +17,7 @@ namespace Exemples.ProcessusAffaires;
 /// <item>Numéro d'identification système (numéro de déclaration…) = clé d'affaire. Le sous-processus
 /// TACHE_EN_ATTENTE garde la clé d'affaire de son parent (comportement par défaut de <c>SousProcessus</c>).</item>
 /// <item>NUMERO_PERIODE_DECLARATION = clé de corrélation des signaux de TACHE_EN_ATTENTE
-/// (<c>.Signal(nom, options: s => s.Correlation(NumeroPeriodeDeclaration))</c>).</item>
+/// (<c>.Signal(nom, s => s.Correlation(NumeroPeriodeDeclaration))</c>).</item>
 /// <item>Code de tâche OX = code du nœud interactif Sentier.</item>
 /// </list>
 /// Sentier est synchrone : après un signal, le parent a déjà avancé jusqu'à sa prochaine tâche
