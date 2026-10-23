@@ -1,6 +1,6 @@
 # Exemple : `IServiceProcessusAffaires` sur Sentier
 
-`ServiceProcessusAffairesSentier.cs` remplace l'appel à l'agent OX (BPM externe) par Sentier, sans changer l'interface utilisée par l'application. Ce fichier n'est pas compilé avec la solution : il dépend des types AT99 / OX02 et se copie dans `AT99.AgentService.OX`.
+`ServiceProcessusAffairesSentier.cs` remplace l'appel à l'agent OX (BPM externe) par Sentier, sans changer l'interface utilisée par l'application. Ce fichier n'est pas compilé avec la solution : il dépend des types de l'application cliente (`TypeProcessus`, `IFabriqueProcessus`…) et se copie dans son projet, en ajustant l'espace de noms.
 
 ## Enregistrement
 
@@ -8,7 +8,7 @@
 services.AddScoped<IDbConnection>(_ => OuvrirConnexionOracle());
 services.AddSentier(o =>
 {
-    o.PrefixeTables = "AT_PROC";
+    o.PrefixeTables = "SENTIER";
     o.UtiliserOracle().BalayerAssemblyDe<Program>();      // définitions, commandes, requêtes, GestionnaireTachesOX
 });
 services.AddScoped<IServiceProcessusAffaires, ServiceProcessusAffairesSentier>();

@@ -23,7 +23,7 @@ services.AddScoped<IDbConnection>(_ => OuvrirConnexionOracle());
 
 services.AddSentier(o =>
 {
-    o.PrefixeTables = "AT_PROC";              // obligatoire : lettres, chiffres, '_' (12 caractères max)
+    o.PrefixeTables = "SENTIER";              // obligatoire : lettres, chiffres, '_' (12 caractères max)
     o.UtiliserOracle();                       // ou o.UtiliserSqlite()
     o.BalayerAssemblyDe<Program>();           // commandes, requêtes, définitions, plans de migration, gestionnaire de tâches
     o.MaxEtapesParExecution = 1000;           // protection contre les boucles infinies

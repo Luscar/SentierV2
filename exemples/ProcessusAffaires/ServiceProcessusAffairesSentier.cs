@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using Sentier;
 
-namespace AT99.AgentService.OX.BureauVirtuel.Services;
+namespace Exemples.ProcessusAffaires;
 
 /// <summary>
 /// Implémentation de <see cref="IServiceProcessusAffaires"/> sur Sentier, à la place de l'agent OX (BPM externe).
@@ -160,7 +160,7 @@ public class ServiceProcessusAffairesSentier : IServiceProcessusAffaires
         string logonAssigne = "",
         TypeFormulaire? typeFormulaire = null)
     {
-        ProcessusAT processus = fabriqueProcessus.Creer(typeProcessus, identifiant, logonCreation, logonAssigne, typeFormulaire);
+        var processus = fabriqueProcessus.Creer(typeProcessus, identifiant, logonCreation, logonAssigne, typeFormulaire);
 
         try
         {

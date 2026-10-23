@@ -27,7 +27,7 @@ public static class ExtensionsSentier
     /// services.AddScoped&lt;IDbConnection&gt;(_ => OuvrirConnexion());
     /// services.AddSentier(o =>
     /// {
-    ///     o.PrefixeTables = "AT_PROC";
+    ///     o.PrefixeTables = "SENTIER";
     ///     o.UtiliserOracle().BalayerAssemblyDe&lt;Program&gt;();   // trouve aussi l'IGestionnaireTaches du client
     /// });
     /// </code>
