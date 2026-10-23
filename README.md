@@ -6,6 +6,8 @@ Pour une première intégration, suivre le [guide de démarrage](docs/demarrage.
 
 Les noms des objets de base suivent les mnémoniques de BpmPlus ; voir [docs/mnemoniques.md](docs/mnemoniques.md).
 
+Exemple complet d'un processus long (corrections, calendrier comptable, signal) : [exemples/TraitementDeclaration](exemples/TraitementDeclaration/README.md).
+
 - **Exécution synchrone en chaîne** : les nœuds s'enchaînent jusqu'à une fin ou un nœud suspensif (attente, tâche, sous-processus).
 - **Une seule transaction, celle du client** : Sentier n'ouvre, ne valide et n'annule jamais de transaction.
 - **Une instance = un processus + une clé d'affaire** (`long`).
