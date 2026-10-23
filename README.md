@@ -312,4 +312,15 @@ Points non tranchés par la spécification, résolus au plus simple :
 - **SQLite** : dates stockées en texte, séquences émulées par `{Prefixe}_SEQUENCE`, clés étrangères actives seulement avec `PRAGMA foreign_keys = ON`.
 - **Cache** : les versions de définitions sont gardées en mémoire par identifiant, sans invalidation (singleton par conteneur DI).
 
-Hors périmètre de cette itération : tests, passerelles parallèles, événements de bordure, compensation, escalade des tâches, éditeur graphique et import BPMN.
+Hors périmètre de cette itération : passerelles parallèles, événements de bordure, compensation, escalade des tâches, éditeur graphique et import BPMN.
+
+## 11. Tests
+
+```bash
+dotnet test Sentier.sln
+```
+
+| Projet | Contenu |
+|---|---|
+| `tests/Sentier.Tests.Unitaires` | Domaine, variables et conversions, constructeur et validateurs, sérialisation, Mermaid, registre, options, session, plan de migration, noms d'objets, dialectes, enregistrement DI et Autofac. Le moteur et les services (nœuds, signaux, échéances, tâches, sous-processus, annulation, erreurs, déploiement, migration) tournent sur des dépôts en mémoire, sans base. |
+| `tests/Sentier.Tests.Integration` | Bout en bout sur SQLite en mémoire, avec la vraie pile (`AddSentier`, schéma, dépôts Dapper) et un gestionnaire de tâches en base dans la même transaction : parcours complet d'une demande de congé (tâche, relances par le batch, signal RH, sous-processus d'archivage), annulations et rejeux, transactions annulées par le client, mise en erreur et reprise, migrations automatique et par plan, module Autofac, et le scénario de l'exemple `DeclarationSousProcessus`. |

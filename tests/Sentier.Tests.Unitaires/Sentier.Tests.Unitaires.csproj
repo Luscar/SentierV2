@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sentier.Tests.Unitaires</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sentier.Core\Sentier.Core.csproj" />
+    <ProjectReference Include="..\..\src\Sentier.DependencyInjection\Sentier.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\src\Sentier.Autofac\Sentier.Autofac.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>
