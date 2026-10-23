@@ -103,7 +103,9 @@ public static class ExportateurMermaid
     {
         if (transition.Requete is not null)
         {
-            return $"{transition.NomSortie} : {(transition.Requete.Inverser ? "non " : "")}{transition.Requete.Nom}";
+            var condition = $"{(transition.Requete.Inverser ? "non " : "")}{transition.Requete.Nom}";
+            var parDefaut = (transition.Requete.Inverser ? ConstructeurDecision.PrefixeNon : "") + transition.Requete.Nom;
+            return transition.NomSortie == parDefaut ? condition : $"{transition.NomSortie} : {condition}";
         }
 
         return transition.NomSortie;

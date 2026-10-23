@@ -28,6 +28,20 @@ public sealed class ConfigurationParametres
         return this;
     }
 
+    /// <summary>Un paramètre par variable, chacun portant le nom de sa variable.</summary>
+    public ConfigurationParametres Variables(params IVariable[] variables)
+    {
+        foreach (var variable in variables)
+        {
+            Variable(variable.Nom, variable.Nom);
+        }
+
+        return this;
+    }
+
+    /// <summary>Paramètre optionnel tiré d'une variable, portant le nom de la variable : absent si la variable n'a pas de valeur.</summary>
+    public ConfigurationParametres VariableOptionnelle<T>(Variable<T> variable) => VariableOptionnelle(variable.Nom, variable);
+
     /// <summary>Paramètre optionnel tiré d'une variable : absent si la variable n'a pas de valeur.</summary>
     public ConfigurationParametres VariableOptionnelle<T>(string nom, Variable<T> variable)
     {
@@ -67,81 +81,199 @@ public sealed class ConfigurationParametres
         => new() { Nom = nomCommande, Parametres = Lire(configuration) };
 }
 
-/// <summary>Branches d'un nœud de décision.</summary>
-public sealed class ConstructeurDecision
+/// <summary>
+/// Méthodes communes aux nœuds à plusieurs sorties. Une branche se déclare, puis sa destination
+/// s'écrit juste après : <c>.Alors(b =&gt; ...)</c> (bloc imbriqué) ou <c>.Vers("code")</c> (lien).
+/// Sans destination, la branche mène au nœud qui suit le nœud à plusieurs sorties.
+/// </summary>
+/// <typeparam name="TSelf">Type concret du constructeur, pour le chaînage.</typeparam>
+public abstract class ConstructeurBranches<TSelf> where TSelf : ConstructeurBranches<TSelf>
+{
+    private protected ConstructeurBranches()
+    {
+    }
+
+    internal List<BrancheDeclaree> Branches { get; } = [];
+
+    internal List<string> Erreurs { get; } = [];
+
+    private protected TSelf Moi => (TSelf)this;
+
+    /// <summary>Bloc imbriqué de la dernière branche déclarée (style imbriqué).</summary>
+    public TSelf Alors(Action<ConstructeurBloc> bloc) => Destination(nameof(Alors), b => b.Bloc = bloc);
+
+    /// <summary>Lien de la dernière branche déclarée vers le code d'un nœud déclaré ailleurs (style plat).</summary>
+    public TSelf Vers(string code) => Destination(nameof(Vers), b => b.Lien = code);
+
+    private protected TSelf AjouterBranche(BrancheDeclaree branche)
+    {
+        Branches.Add(branche);
+        return Moi;
+    }
+
+    private protected TSelf AjouterBranche(BrancheDeclaree branche, Action<ConstructeurBloc> alors)
+    {
+        branche.Bloc = alors;
+        return AjouterBranche(branche);
+    }
+
+    private protected TSelf AjouterBranche(BrancheDeclaree branche, string vers)
+    {
+        branche.Lien = vers;
+        return AjouterBranche(branche);
+    }
+
+    /// <summary>Renomme la sortie de la dernière branche déclarée.</summary>
+    private protected TSelf Renommer(string nomSortie)
+    {
+        if (Derniere("Nommee") is { } branche)
+        {
+            branche.NomSortie = nomSortie;
+        }
+
+        return Moi;
+    }
+
+    private TSelf Destination(string methode, Action<BrancheDeclaree> appliquer)
+    {
+        if (Derniere(methode) is not { } branche)
+        {
+            return Moi;
+        }
+
+        if (branche.Bloc is not null || branche.Lien is not null)
+        {
+            Erreurs.Add($"la branche '{branche.NomSortie}' a déjà une destination ({methode}).");
+        }
+        else
+        {
+            appliquer(branche);
+        }
+
+        return Moi;
+    }
+
+    private BrancheDeclaree? Derniere(string methode)
+    {
+        if (Branches.Count == 0)
+        {
+            Erreurs.Add($"{methode}(...) doit suivre la déclaration d'une branche.");
+            return null;
+        }
+
+        return Branches[^1];
+    }
+}
+
+/// <summary>Branches d'un nœud de décision : branches conditionnelles évaluées dans l'ordre, puis « sinon ».</summary>
+/// <example>
+/// <code>
+/// .Decision("solde-suffisant", d =&gt; d
+///     .Si&lt;SoldeSuffisant&gt;(p =&gt; p.Variables(NbJours, Solde))
+///     .Sinon(b =&gt; b.Fin("refusee")))
+/// </code>
+/// </example>
+public sealed class ConstructeurDecision : ConstructeurBranches<ConstructeurDecision>
 {
     /// <summary>Nom de la sortie « sinon » par défaut.</summary>
     public const string SortieSinon = "sinon";
 
-    internal List<BrancheDeclaree> Branches { get; } = [];
+    /// <summary>Préfixe du nom de sortie par défaut d'une branche à résultat inversé.</summary>
+    public const string PrefixeNon = "non-";
 
-    /// <summary>Branche prise si la requête <typeparamref name="TRequete"/> retourne vrai.</summary>
-    /// <param name="nomSortie">Nom de la branche (historique).</param>
-    /// <param name="alors">Bloc imbriqué de la branche.</param>
-    /// <param name="vers">Lien vers le code d'un nœud déclaré ailleurs.</param>
-    /// <param name="parametres">Paramètres de la requête.</param>
-    public ConstructeurDecision Si<TRequete>(string nomSortie, Action<ConstructeurBloc>? alors = null, string? vers = null, Action<ConfigurationParametres>? parametres = null)
-        where TRequete : IRequeteSentier
-        => SiRequete(nomSortie, NomsSentier.NomRequete(typeof(TRequete)), false, alors, vers, parametres);
+    internal ConstructeurDecision()
+    {
+    }
 
-    /// <summary>Branche prise si la requête <typeparamref name="TRequete"/> retourne faux (résultat inversé).</summary>
-    public ConstructeurDecision SiPas<TRequete>(string nomSortie, Action<ConstructeurBloc>? alors = null, string? vers = null, Action<ConfigurationParametres>? parametres = null)
-        where TRequete : IRequeteSentier
-        => SiRequete(nomSortie, NomsSentier.NomRequete(typeof(TRequete)), true, alors, vers, parametres);
+    /// <summary>Branche prise si la requête <typeparamref name="TRequete"/> retourne vrai. Sa sortie porte le nom de la requête.</summary>
+    public ConstructeurDecision Si<TRequete>(Action<ConfigurationParametres>? parametres = null) where TRequete : IRequeteSentier
+        => Si(NomsSentier.NomRequete(typeof(TRequete)), parametres);
+
+    /// <summary>Branche prise si la requête <typeparamref name="TRequete"/> retourne faux. Sa sortie porte le nom « non-requête ».</summary>
+    public ConstructeurDecision SiPas<TRequete>(Action<ConfigurationParametres>? parametres = null) where TRequete : IRequeteSentier
+        => SiPas(NomsSentier.NomRequete(typeof(TRequete)), parametres);
 
     /// <summary>Branche conditionnelle sur une requête désignée par son nom.</summary>
-    public ConstructeurDecision SiRequete(string nomSortie, string nomRequete, bool inverser = false, Action<ConstructeurBloc>? alors = null, string? vers = null, Action<ConfigurationParametres>? parametres = null)
-    {
-        var requete = new AppelRequete { Nom = nomRequete, Parametres = ConfigurationParametres.Lire(parametres), Inverser = inverser };
-        Branches.Add(new BrancheDeclaree(nomSortie, alors, vers, requete));
-        return this;
-    }
+    public ConstructeurDecision Si(string nomRequete, Action<ConfigurationParametres>? parametres = null)
+        => AjouterRequete(nomRequete, false, parametres);
 
-    /// <summary>Branche « sinon », prise si aucune requête ne retourne vrai.</summary>
-    public ConstructeurDecision Sinon(Action<ConstructeurBloc>? alors = null, string? vers = null, string nomSortie = SortieSinon)
-    {
-        Branches.Add(new BrancheDeclaree(nomSortie, alors, vers, EstSinon: true));
-        return this;
-    }
+    /// <summary>Branche à résultat inversé sur une requête désignée par son nom.</summary>
+    public ConstructeurDecision SiPas(string nomRequete, Action<ConfigurationParametres>? parametres = null)
+        => AjouterRequete(nomRequete, true, parametres);
+
+    /// <summary>Branche « sinon », prise si aucune requête ne retourne vrai ; sans destination, elle mène au nœud suivant.</summary>
+    public ConstructeurDecision Sinon() => AjouterBranche(BrancheSinon());
+
+    /// <summary>Branche « sinon » avec son bloc imbriqué.</summary>
+    public ConstructeurDecision Sinon(Action<ConstructeurBloc> alors) => AjouterBranche(BrancheSinon(), alors);
+
+    /// <summary>Branche « sinon » avec un lien vers un nœud déclaré ailleurs.</summary>
+    public ConstructeurDecision Sinon(string vers) => AjouterBranche(BrancheSinon(), vers);
+
+    /// <summary>Nom de la sortie de la dernière branche (historique), si le nom par défaut ne convient pas.</summary>
+    public ConstructeurDecision Nommee(string nomSortie) => Renommer(nomSortie);
+
+    private ConstructeurDecision AjouterRequete(string nomRequete, bool inverser, Action<ConfigurationParametres>? parametres)
+        => AjouterBranche(new BrancheDeclaree(inverser ? PrefixeNon + nomRequete : nomRequete)
+        {
+            Requete = new AppelRequete { Nom = nomRequete, Parametres = ConfigurationParametres.Lire(parametres), Inverser = inverser },
+        });
+
+    private static BrancheDeclaree BrancheSinon() => new(SortieSinon) { EstSinon = true };
 }
 
-/// <summary>Déclencheurs d'un nœud d'attente.</summary>
-public sealed class ConstructeurAttente
+/// <summary>Déclencheurs d'un nœud d'attente : au plus une échéance, des signaux ; chacun a sa branche.</summary>
+/// <example>
+/// <code>
+/// .Attente("attendre-rh", a =&gt; a
+///     .Signal("VALIDATION_RH")
+///     .Echeance(TimeSpan.FromDays(2)).Alors(b =&gt; b.Systemique&lt;Relancer&gt;("relancer").Vers("attendre-rh")))
+/// </code>
+/// </example>
+public sealed class ConstructeurAttente : ConstructeurBranches<ConstructeurAttente>
 {
-    private readonly List<Declencheur> _declencheurs = [];
+    private readonly List<Func<string, Declencheur>> _declencheurs = [];
     private readonly List<AppelCommande> _commandesEntree = [];
 
-    internal List<BrancheDeclaree> Branches { get; } = [];
+    internal ConstructeurAttente()
+    {
+    }
 
-    /// <summary>Échéance relative à l'entrée dans le nœud.</summary>
-    public ConstructeurAttente Echeance(TimeSpan duree, Action<ConstructeurBloc>? alors = null, string? vers = null, string nomSortie = DeclencheurEcheance.SortieParDefaut)
-        => AjouterEcheance(new DeclencheurEcheance { NomSortie = nomSortie, Duree = duree }, alors, vers);
+    /// <summary>Échéance relative à l'entrée dans le nœud. Sa sortie se nomme « echeance ».</summary>
+    public ConstructeurAttente Echeance(TimeSpan duree)
+        => AjouterEcheance(nom => new DeclencheurEcheance { NomSortie = nom, Duree = duree });
 
     /// <summary>Échéance à une date absolue (UTC).</summary>
-    public ConstructeurAttente Echeance(DateTime date, Action<ConstructeurBloc>? alors = null, string? vers = null, string nomSortie = DeclencheurEcheance.SortieParDefaut)
-        => AjouterEcheance(new DeclencheurEcheance { NomSortie = nomSortie, DateAbsolue = date.Kind == DateTimeKind.Local ? date.ToUniversalTime() : DateTime.SpecifyKind(date, DateTimeKind.Utc) }, alors, vers);
+    public ConstructeurAttente Echeance(DateTime date)
+    {
+        var utc = date.Kind == DateTimeKind.Local ? date.ToUniversalTime() : DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        return AjouterEcheance(nom => new DeclencheurEcheance { NomSortie = nom, DateAbsolue = utc });
+    }
 
     /// <summary>Échéance lue dans une variable date (calculée, par exemple, par une commande d'entrée).</summary>
-    public ConstructeurAttente Echeance(Variable<DateTime> variable, Action<ConstructeurBloc>? alors = null, string? vers = null, string nomSortie = DeclencheurEcheance.SortieParDefaut)
-        => AjouterEcheance(new DeclencheurEcheance { NomSortie = nomSortie, Variable = variable.Nom }, alors, vers);
+    public ConstructeurAttente Echeance(Variable<DateTime> variable)
+        => AjouterEcheance(nom => new DeclencheurEcheance { NomSortie = nom, Variable = variable.Nom });
 
-    /// <summary>Signal nommé. Sa sortie porte, par défaut, le nom du signal.</summary>
-    public ConstructeurAttente Signal(string nomSignal, Action<ConstructeurBloc>? alors = null, string? vers = null, Action<OptionsSignal>? options = null)
+    /// <summary>Signal nommé ; sa sortie porte le nom du signal et sa charge utile est fusionnée dans les variables.</summary>
+    /// <param name="nomSignal">Nom du signal.</param>
+    /// <param name="options">Corrélation, fusion de la charge utile.</param>
+    public ConstructeurAttente Signal(string nomSignal, Action<OptionsSignal>? options = null)
     {
         var configuration = new OptionsSignal();
         options?.Invoke(configuration);
-        var declencheur = new DeclencheurSignal
+        _declencheurs.Add(nom => new DeclencheurSignal
         {
-            NomSortie = configuration.NomSortie ?? nomSignal,
+            NomSortie = nom,
             NomSignal = nomSignal,
             CleCorrelation = configuration.CleCorrelation,
             VariableCorrelation = configuration.VariableCorrelation,
             FusionnerChargeUtile = configuration.Fusionner,
-        };
-        _declencheurs.Add(declencheur);
-        Branches.Add(new BrancheDeclaree(declencheur.NomSortie, alors, vers));
-        return this;
+        });
+        return AjouterBranche(new BrancheDeclaree(nomSignal));
     }
+
+    /// <summary>Nom de la sortie du dernier déclencheur, si le nom par défaut ne convient pas.</summary>
+    public ConstructeurAttente Nommee(string nomSortie) => Renommer(nomSortie);
 
     /// <summary>Commande exécutée à l'entrée, avant l'enregistrement des déclencheurs.</summary>
     public ConstructeurAttente CommandeEntree<TCommande>(Action<ConfigurationParametres>? parametres = null) where TCommande : ICommandeSentier
@@ -157,15 +289,14 @@ public sealed class ConstructeurAttente
     internal NoeudAttente Creer(string code) => new()
     {
         Code = code,
-        Declencheurs = _declencheurs.ToList(),
+        Declencheurs = _declencheurs.Select((creer, i) => creer(Branches[i].NomSortie)).ToList(),
         CommandesEntree = _commandesEntree.ToList(),
     };
 
-    private ConstructeurAttente AjouterEcheance(DeclencheurEcheance declencheur, Action<ConstructeurBloc>? alors, string? vers)
+    private ConstructeurAttente AjouterEcheance(Func<string, Declencheur> declencheur)
     {
         _declencheurs.Add(declencheur);
-        Branches.Add(new BrancheDeclaree(declencheur.NomSortie, alors, vers));
-        return this;
+        return AjouterBranche(new BrancheDeclaree(DeclencheurEcheance.SortieParDefaut));
     }
 }
 
@@ -175,8 +306,6 @@ public sealed class OptionsSignal
     internal string? CleCorrelation { get; private set; }
 
     internal string? VariableCorrelation { get; private set; }
-
-    internal string? NomSortie { get; private set; }
 
     internal bool Fusionner { get; private set; } = true;
 
@@ -191,13 +320,6 @@ public sealed class OptionsSignal
     public OptionsSignal Correlation<T>(Variable<T> variable)
     {
         VariableCorrelation = variable.Nom;
-        return this;
-    }
-
-    /// <summary>Nom de la sortie, si différent du nom du signal.</summary>
-    public OptionsSignal Sortie(string nomSortie)
-    {
-        NomSortie = nomSortie;
         return this;
     }
 
@@ -219,6 +341,10 @@ public sealed class ConstructeurInteractif
     private Parametre? _assigne;
     private TimeSpan? _dureeEcheance;
     private string? _variableEcheance;
+
+    internal ConstructeurInteractif()
+    {
+    }
 
     /// <summary>Rôle assigné.</summary>
     public ConstructeurInteractif Role(string role)
@@ -255,7 +381,10 @@ public sealed class ConstructeurInteractif
         return this;
     }
 
-    /// <summary>Données transmises au bassin de tâches.</summary>
+    /// <summary>Variables transmises au gestionnaire de tâches, chacune sous son nom.</summary>
+    public ConstructeurInteractif Donnees(params IVariable[] variables) => Donnees(p => p.Variables(variables));
+
+    /// <summary>Données transmises au gestionnaire de tâches.</summary>
     public ConstructeurInteractif Donnees(Action<ConfigurationParametres> donnees)
     {
         _donnees.AddRange(ConfigurationParametres.Lire(donnees));
@@ -298,14 +427,16 @@ public sealed class ConstructeurInteractif
     };
 }
 
-/// <summary>Configuration d'un nœud sous-processus.</summary>
-public sealed class ConstructeurSousProcessus
+/// <summary>Configuration d'un nœud sous-processus : mappage des variables et branches par code de fin.</summary>
+public sealed class ConstructeurSousProcessus : ConstructeurBranches<ConstructeurSousProcessus>
 {
     private readonly List<Parametre> _entrees = [];
     private readonly List<MappageSortie> _sorties = [];
     private string? _variableCleAffaire;
 
-    internal List<BrancheDeclaree> Branches { get; } = [];
+    internal ConstructeurSousProcessus()
+    {
+    }
 
     /// <summary>L'enfant vise la clé d'affaire lue dans une variable entière du parent (par défaut : celle du parent).</summary>
     public ConstructeurSousProcessus CleAffaire(Variable<long> variable)
@@ -350,19 +481,23 @@ public sealed class ConstructeurSousProcessus
         return this;
     }
 
-    /// <summary>Branche suivie lorsque l'enfant se termine sur le nœud de fin <paramref name="codeFin"/>.</summary>
-    public ConstructeurSousProcessus SiFin(string codeFin, Action<ConstructeurBloc>? alors = null, string? vers = null)
-    {
-        Branches.Add(new BrancheDeclaree(codeFin, alors, vers));
-        return this;
-    }
+    /// <summary>Branche suivie lorsque l'enfant se termine sur le nœud de fin <paramref name="codeFin"/> ; sans destination, elle mène au nœud suivant.</summary>
+    public ConstructeurSousProcessus SiFin(string codeFin) => AjouterBranche(new BrancheDeclaree(codeFin));
+
+    /// <summary>Branche de fin avec son bloc imbriqué.</summary>
+    public ConstructeurSousProcessus SiFin(string codeFin, Action<ConstructeurBloc> alors) => AjouterBranche(new BrancheDeclaree(codeFin), alors);
+
+    /// <summary>Branche de fin avec un lien vers un nœud déclaré ailleurs.</summary>
+    public ConstructeurSousProcessus SiFin(string codeFin, string vers) => AjouterBranche(new BrancheDeclaree(codeFin), vers);
 
     /// <summary>Branche suivie lorsque l'enfant est annulé (sans elle, le parent est annulé aussi).</summary>
-    public ConstructeurSousProcessus SiAnnule(Action<ConstructeurBloc>? alors = null, string? vers = null)
-    {
-        Branches.Add(new BrancheDeclaree(NoeudSousProcessus.SortieAnnule, alors, vers));
-        return this;
-    }
+    public ConstructeurSousProcessus SiAnnule() => AjouterBranche(new BrancheDeclaree(NoeudSousProcessus.SortieAnnule));
+
+    /// <summary>Branche d'annulation avec son bloc imbriqué.</summary>
+    public ConstructeurSousProcessus SiAnnule(Action<ConstructeurBloc> alors) => AjouterBranche(new BrancheDeclaree(NoeudSousProcessus.SortieAnnule), alors);
+
+    /// <summary>Branche d'annulation avec un lien vers un nœud déclaré ailleurs.</summary>
+    public ConstructeurSousProcessus SiAnnule(string vers) => AjouterBranche(new BrancheDeclaree(NoeudSousProcessus.SortieAnnule), vers);
 
     internal NoeudSousProcessus Creer(string code, string cleProcessus) => new()
     {

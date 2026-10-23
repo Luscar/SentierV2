@@ -41,8 +41,8 @@ public static readonly Variable<string> LogonAssigne =
 // …
 .Interactif("analyse-preliminaire", "Analyse préliminaire", i => i.Assigne(LogonAssigneCreation))
 .Decision("detaillee", d => d
-    .Si<EstVrai>("oui", parametres: p => p.Variable("valeur", EffectuerAnalyseDetaillee))
-    .Sinon(vers: "fin"))
+    .Si<EstVrai>(p => p.Variable("valeur", EffectuerAnalyseDetaillee))
+    .Sinon("fin"))
 .Interactif("analyse-detaillee", "Analyse détaillée", i => i.Assigne(LogonAssigne))
 ```
 

@@ -56,41 +56,39 @@ Les actions qui écrivent lèvent `TransactionRequiseException` sans transaction
 
 ## 3. Écrire un processus
 
-Une classe par processus. Les variables sont déclarées une fois, en constantes typées, puis le déroulement se lit de haut en bas. Enchaîner deux nœuds crée la transition ; les branches s'écrivent **imbriquées** (`alors:`) ou **à plat** avec un lien (`vers:` / `.Vers(...)`).
+Une classe par processus, dérivée de `DefinitionSentier` : la clé vient de l'attribut, les champs `Variable<T>` statiques sont déclarés automatiquement, le début est implicite, et le déroulement se lit de haut en bas. Enchaîner deux nœuds crée la transition ; une branche se déclare puis sa destination s'écrit juste après : `.Alors(b => …)` (imbriqué), `.Vers("code")` (à plat), rien (nœud suivant).
 
 ```csharp
-public sealed class DemandeConge : IDefinitionSentier
+[ProcessusSentier("demande-conge", Nom = "Demande de congé")]
+public sealed class DemandeConge : DefinitionSentier
 {
     public static readonly Variable<long> NbJours = Variable.Entier("nbJours").Obligatoire();
     public static readonly Variable<long> Solde = Variable.Entier("solde").ParDefaut(0);
     public static readonly Variable<string> Decision = Variable.Texte("decision");
 
-    public DefinitionProcessus Definir() => ConstructeurProcessus.Nouveau("demande-conge", "Demande de congé")
-        .Variables(NbJours, Solde, Decision)
-        .Debut()
+    protected override void Definir(ConstructeurProcessus processus) => processus
         .Systemique<CalculerSolde>("calculer-solde", p => p.CleAffaire("employe"))
         .Decision("solde-suffisant", d => d
-            .Si<SoldeSuffisant>("oui", parametres: p => p.Variable("jours", NbJours).Variable("solde", Solde))
-            .Sinon(alors: b => b.Fin("refusee")))                        // style imbriqué
+            .Si<SoldeSuffisant>(p => p.Variables(NbJours, Solde))      // sortie « SoldeSuffisant » : nœud suivant
+            .Sinon(b => b.Fin("refusee")))                               // style imbriqué
         .Interactif("approbation", "Approuver la demande", i => i
             .Role("gestionnaire")
-            .Donnees(p => p.Variable("jours", NbJours))
+            .Donnees(NbJours)
             .CommandeSortie<Journaliser>())
         .Decision("est-approuvee", d => d
-            .Si<EstApprouvee>("oui")                                     // branche vide : nœud suivant
-            .Sinon(vers: "refusee-gestionnaire"))                        // style plat
+            .Si<EstApprouvee>()
+            .Sinon("refusee-gestionnaire"))                              // style plat
         .Attente("attendre-rh", a => a
             .Signal("VALIDATION_RH")
-            .Echeance(TimeSpan.FromDays(2), alors: b => b
-                .Systemique<Relancer>("relancer").Vers("attendre-rh")))   // boucle
-        .SousProcessus("archivage", "archivage", s => s.SiFin("archive"))
+            .Echeance(TimeSpan.FromDays(2)).Alors(b => b
+                .Systemique<Relancer>("relancer").Vers("attendre-rh")))  // boucle
+        .SousProcessus<Archivage>("archivage")
         .Fin("approuvee")
-        .Fin("refusee-gestionnaire")
-        .Construire();
+        .Fin("refusee-gestionnaire");
 }
 ```
 
-Règles de sortie d'un nœud, dans l'ordre : lien explicite ; sinon le nœud suivant du même bloc ; sinon, en fin de bloc imbriqué, le nœud qui suit le nœud à plusieurs sorties. Un nœud placé après une fin ou un lien n'est relié que par un lien ou une branche. Raccourcis : `AttendreDelai(code, durée)` et `AttendreSignal(code, nom)`.
+Le guide complet du constructeur (nœuds, branches, paramètres, tableau des défauts, aide-mémoire) est dans [docs/constructeur.md](docs/constructeur.md).
 
 `Construire()` valide la définition (codes uniques, un début, au moins une fin, liens existants, nœuds atteignables, décision avec branche conditionnelle et « sinon », attente avec au moins un déclencheur et au plus une échéance, variables référencées déclarées et typées) et lève `DefinitionInvalideException` avec la liste des erreurs.
 
@@ -119,7 +117,7 @@ public sealed class SoldeSuffisant : RequeteSentier<ParametresSolde>   // param�
 }
 ```
 
-Paramètres d'un appel : `Valeur(nom, valeur)` (statique), `Variable(nom, variable)`, `VariableOptionnelle(nom, variable[, défaut])`, `CleAffaire(nom)`. `SiPas<TRequete>` inverse le résultat d'une requête. Points d'accroche : nœud systémique (1 commande), entrée d'attente, entrée et sortie d'interactif. Le contexte d'une requête est en lecture seule.
+Paramètres d'un appel : `Valeur(nom, valeur)` (statique), `Variable([nom, ]variable)`, `Variables(v1, v2, …)`, `VariableOptionnelle([nom, ]variable[, défaut])`, `CleAffaire(nom)`. `SiPas<TRequete>` inverse le résultat d'une requête. Points d'accroche : nœud systémique (1 commande), entrée d'attente, entrée et sortie d'interactif. Le contexte d'une requête est en lecture seule.
 
 ## 5. Clé d'affaire
 
