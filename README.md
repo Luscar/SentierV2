@@ -14,6 +14,7 @@ Moteur de processus (BPM) léger, distribué en packages NuGet pour .NET 10.
 | `Sentier.Persistance.Oracle` | Dialecte Oracle et script DDL (tables + séquences). |
 | `Sentier.Persistance.Sqlite` | Dialecte SQLite et script DDL. |
 | `Sentier.DependencyInjection` | Extension `AddSentier`. |
+| `Sentier.Autofac` | Module Autofac `ModuleSentier`. |
 
 ## 1. Enregistrement
 
@@ -30,13 +31,49 @@ services.AddSentier(o =>
 });
 ```
 
-`AddSentier` n'enregistre **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateur` (utilisateur courant, pour l'audit), `IIntercepteurCommande`, `IIntercepteurRequete`, et un `IHorloge` ou `ISerialiseurVariables` personnalisé.
+Avec **Autofac** (`Sentier.Autofac`), le module enregistre les mêmes services :
+
+```csharp
+var builder = new ContainerBuilder();
+
+builder.RegisterModule(new ModuleSentier(o => o
+    .UtiliserOracle("SENTIER")            // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
+    .BalayerAssemblyDe<Program>()));      // définitions, commandes, requêtes, gestionnaire de tâches
+
+_container = builder.Build();
+```
+
+`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Avec Autofac, le gestionnaire de tâches vient du balayage ou de `UtiliserGestionnaireTaches<T>()`. Un service enregistré dans le `ContainerBuilder` **après** le module (`IHorloge`, `IContexteUtilisateur`…) remplace celui de Sentier.
+
+`AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateur` (utilisateur courant, pour l'audit), `IIntercepteurCommande`, `IIntercepteurRequete`, et un `IHorloge` ou `ISerialiseurVariables` personnalisé.
 
 Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (pratique avec SQLite) ou remis à un DBA via `GenererScript()`. Les scripts sont aussi dans `src/Sentier.Persistance.*/Scripts`.
 
 ## 2. Connexion et transaction
 
-Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la DI et lit la transaction dans `IAccesseurTransaction`, que le client alimente :
+Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la portée et prend la transaction dans `IAccesseurTransaction` si le client l'a alimenté, sinon l'`IDbTransaction` enregistrée dans la portée.
+
+Le plus simple : enregistrer la connexion et la transaction dans la portée. Les appels aux services ne prennent ensuite aucun paramètre de connexion.
+
+```csharp
+using var connexion = _fabriqueConnexions.Ouvrir();
+using var transaction = connexion.BeginTransaction();
+
+using var scope = _container.BeginLifetimeScope(b =>
+{
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();     // le client en reste propriétaire
+    b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();
+});
+
+var serviceSentier = scope.Resolve<IServiceSentier>();
+await serviceSentier.DemarrerAsync("demande-conge", cleAffaire: 42, ValeursVariables.Avec(DemandeConge.NbJours, 3L));
+
+transaction.Commit();
+```
+
+Dans une application web, ce code va dans un middleware ou une fabrique qui crée la portée pour chaque requête. Avec SQLite, le schéma se crée de la même façon : `await scope.Resolve<InstallateurSchemaSentier>().InstallerAsync();`.
+
+Avec `Microsoft.Extensions.DependencyInjection`, alimenter `IAccesseurTransaction` dans la portée :
 
 ```csharp
 using var scope = provider.CreateScope();

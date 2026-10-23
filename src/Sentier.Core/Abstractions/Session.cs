@@ -35,7 +35,8 @@ public sealed class AccesseurTransaction : IAccesseurTransaction
 
 /// <summary>
 /// Implémentation par défaut de <see cref="ISessionSentier"/> : résout l'<see cref="IDbConnection"/>
-/// enregistrée par le client dans la DI et lit la transaction depuis <see cref="IAccesseurTransaction"/>.
+/// enregistrée par le client dans la DI ; la transaction est celle de <see cref="IAccesseurTransaction"/>,
+/// sinon l'<see cref="IDbTransaction"/> enregistrée dans la portée, s'il y en a une.
 /// </summary>
 public sealed class SessionSentierParDefaut : ISessionSentier
 {
@@ -54,7 +55,7 @@ public sealed class SessionSentierParDefaut : ISessionSentier
         ?? throw new SentierException("Aucune IDbConnection n'est enregistrée dans l'injection de dépendances du client.");
 
     /// <inheritdoc />
-    public IDbTransaction? Transaction => _accesseur.Transaction;
+    public IDbTransaction? Transaction => _accesseur.Transaction ?? _services.GetService<IDbTransaction>();
 }
 
 /// <summary>Méthodes utilitaires sur <see cref="ISessionSentier"/>.</summary>
