@@ -26,7 +26,27 @@ Le gestionnaire de tâches (`IGestionnaireTaches`) s'appuie sur `IAgentServiceOX
 | Sous-processus `TACHE_EN_ATTENTE` | nœud `SousProcessus` ; l'enfant garde la clé d'affaire du parent et déclare `InstancesMultiples()` si besoin |
 | `NUMERO_PERIODE_DECLARATION` | corrélation des signaux : `.Signal(nom, options: s => s.Correlation(NumeroPeriodeDeclaration))` |
 | Code de tâche OX (`CodeProchaineTache`) | code du nœud interactif |
-| Propriétés de `contenu` (tâche, signal) | variables déclarées du même nom ; les autres sont ignorées |
+| Propriétés de `contenu` (tâche, signal) | variables déclarées sous le nom C# de la propriété (voir ci-dessous) |
+
+## Contenu des tâches et des signaux (`VariablesAffectation`)
+
+Le contenu est sérialisé selon son **type réel** : un appel typé `VariablesAffectation` donne les propriétés de la classe dérivée (`VariablesAnalysePreliminaire`…), sans le discriminant `$type`. Chaque propriété est fusionnée dans la variable Sentier **du même nom** ; une propriété sans variable déclarée est ignorée sans erreur. Déclarer les variables avec `nameof` évite les fautes de frappe :
+
+```csharp
+public static readonly Variable<bool> EffectuerAnalyseDetaillee =
+    Variable.Booleen(nameof(VariablesAnalysePreliminaire.EffectuerAnalyseDetaillee));
+public static readonly Variable<string> LogonAssigne =
+    Variable.Texte(nameof(VariablesAnalysePreliminaire.LogonAssigne));
+
+// …
+.Interactif("analyse-preliminaire", "Analyse préliminaire", i => i.Assigne(LogonAssigneCreation))
+.Decision("detaillee", d => d
+    .Si<EstVrai>("oui", parametres: p => p.Variable("valeur", EffectuerAnalyseDetaillee))
+    .Sinon(vers: "fin"))
+.Interactif("analyse-detaillee", "Analyse détaillée", i => i.Assigne(LogonAssigne))
+```
+
+Types : `bool` → `Booleen`, `string` → `Texte`, `int`/`long` → `Entier`, `decimal` → `Decimal`, `DateTime` → `Date`, objet ou liste → `Json`. Un `enum` est sérialisé en nombre (`Entier`), sauf s'il porte `[JsonConverter(typeof(JsonStringEnumConverter))]` (`Texte`). Une propriété de même nom dans deux classes `VariablesAffectation` alimente la même variable.
 
 ## Différences de comportement
 

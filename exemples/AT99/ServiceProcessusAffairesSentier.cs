@@ -201,16 +201,17 @@ public class ServiceProcessusAffairesSentier : IServiceProcessusAffaires
             .ToList();
 
     /// <summary>
-    /// Contenu d'une tâche ou d'un signal vers les données Sentier : une entrée par propriété JSON, fusionnée
-    /// dans la variable déclarée du même nom (les autres sont ignorées). Utiliser les mêmes options de
-    /// sérialisation que l'ancien appel (<c>ObjetSerialiseJson&lt;T&gt;</c>) pour garder les mêmes noms.
+    /// Contenu d'une tâche ou d'un signal (ex. <c>VariablesAnalysePreliminaire</c>) vers les données Sentier :
+    /// une entrée par propriété, sous le nom C# de la propriété, fusionnée dans la variable déclarée du même nom
+    /// (les autres sont ignorées). Sérialisé selon son type réel : un appel typé <c>VariablesAffectation</c>
+    /// donne les propriétés de la classe dérivée, sans discriminant <c>$type</c>.
     /// </summary>
     private static IReadOnlyDictionary<string, object?>? VersDonnees<T>(T contenu)
     {
         if (contenu is null)
             return null;
 
-        var json = JsonSerializer.SerializeToElement(contenu);
+        var json = JsonSerializer.SerializeToElement(contenu, contenu.GetType());
         if (json.ValueKind != JsonValueKind.Object)
             throw new ArgumentException($"Le contenu doit être un objet JSON (reçu : {json.ValueKind}).", nameof(contenu));
 
