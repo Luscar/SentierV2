@@ -43,9 +43,11 @@ public interface IGestionnaireTaches
     Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
 
     /// <summary>
-    /// Marque une tâche complétée. Appelée par Sentier pendant <c>CompleterTacheAsync</c>, après les commandes de sortie.
+    /// Marque une tâche complétée, avec les données de complétion reçues par <c>IServiceSentier.CompleterTacheAsync</c>.
+    /// Appelée après les commandes de sortie. Doit être idempotente : elle est rappelée si la transaction de Sentier
+    /// a été annulée après un premier appel.
     /// </summary>
-    Task CompleterTacheAsync(long idTache, string? utilisateur, CancellationToken ct = default);
+    Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct = default);
 
     /// <summary>Annule une tâche ouverte (annulation de l'instance, migration).</summary>
     Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct = default);

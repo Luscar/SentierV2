@@ -143,7 +143,7 @@ Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COUR
 | `CreerTacheAsync(demande)` → identifiant | à l'entrée d'un nœud interactif, après les commandes d'entrée |
 | `ObtenirTacheAsync(id)` | au début de `CompleterTacheAsync` (tâche inconnue ou non ouverte → `SansEffet`) |
 | `ObtenirTachesOuvertesAsync(idInstance)` | annulation, reprise d'une instance en erreur, migration, suivi |
-| `CompleterTacheAsync(id, utilisateur)` | après la fusion des données et les commandes de sortie |
+| `CompleterTacheAsync(id, données, utilisateur)` | après la fusion des données et les commandes de sortie |
 | `AnnulerTacheAsync(id, motif)` | annulation de l'instance (et de ses enfants), migration avec reprise à un autre nœud |
 | `RenommerNoeudAsync(idInstance, ancien, nouveau)` | migration qui renomme le nœud interactif courant |
 
@@ -153,7 +153,7 @@ public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
     public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
         => depot.InsererAsync(demande.IdInstance, demande.CodeNoeud, demande.Nom, demande.Role, demande.Donnees, ct);
 
-    public Task CompleterTacheAsync(long idTache, string? utilisateur, CancellationToken ct)
+    public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Completee, utilisateur, ct);
 
     // ObtenirTacheAsync, ObtenirTachesOuvertesAsync, AnnulerTacheAsync, RenommerNoeudAsync…

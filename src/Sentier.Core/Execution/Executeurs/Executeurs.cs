@@ -157,7 +157,7 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horlo
         await appels.ExecuterCommandesAsync(noeud.CommandesSortie, contexte, MomentCommande.Sortie, reprise.Donnees ?? new Dictionary<string, object?>(), ct);
 
         var utilisateur = reprise.Utilisateur ?? contexte.Utilisateur;
-        await contexte.Moteur.Taches.CompleterTacheAsync(reprise.Tache.Id, utilisateur, ct);
+        await contexte.Moteur.Taches.CompleterTacheAsync(reprise.Tache.Id, reprise.Donnees, utilisateur, ct);
         await contexte.Moteur.AnnulerTachesOrphelinesAsync(contexte.Instance, reprise.Tache.Id, ct);
         contexte.Instance.IdTacheCourante = null;
 
