@@ -46,15 +46,22 @@ internal sealed class ServiceSentier(
             return ResultatExecution.Aucun($"Aucune tâche ne correspond à l'identifiant {idTache}.");
         }
 
+        // La référence est la tâche courante de l'instance, pas le statut tenu par le client : une tâche orpheline
+        // ou périmée ne reprend jamais l'instance, et une tâche marquée complétée chez le client alors que la
+        // transaction de Sentier a été annulée peut être complétée de nouveau.
         var instance = await instances.ObtenirAsync(tache.IdInstance, ct);
-        if (tache.Statut != StatutTache.Ouverte)
+        if (instance is null || !instance.EstAuRepos || instance.IdTacheCourante != idTache)
         {
-            return ResultatExecution.Aucun($"La tâche {idTache} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.", instance);
+            return ResultatExecution.Aucun(
+                tache.Statut == StatutTache.Ouverte
+                    ? $"L'instance n'attend pas la tâche {idTache}."
+                    : $"La tâche {idTache} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.",
+                instance);
         }
 
-        if (instance is null || !instance.EstAuRepos || instance.CodeNoeudCourant != tache.CodeNoeud)
+        if (tache.Statut == StatutTache.Annulee)
         {
-            return ResultatExecution.Aucun($"L'instance n'attend plus la tâche {idTache}.", instance);
+            return ResultatExecution.Aucun($"La tâche {idTache} est annulée chez le client ; l'instance l'attend toujours.", instance);
         }
 
         var auteur = utilisateur ?? moteur.UtilisateurCourant;
@@ -194,11 +201,9 @@ internal sealed class ServiceSentier(
         if (noeud.EstSuspensif)
         {
             var enAttente = await attentes.ObtenirParInstanceAsync(instance.Id, ct);
-            IReadOnlyList<TacheUtilisateur> enTache = noeud is NoeudInteractif && moteur.TachesOptionnelles is { } taches
-                ? await taches.ObtenirTachesOuvertesAsync(instance.Id, ct)
-                : [];
+            var enTache = noeud is NoeudInteractif && instance.IdTacheCourante is not null;
             var enfants = await instances.ObtenirEnfantsActifsAsync(instance.Id, ct);
-            if (enAttente.Count > 0 || enTache.Count > 0 || enfants.Count > 0)
+            if (enAttente.Count > 0 || enTache || enfants.Count > 0)
             {
                 // L'instance attend toujours : on la remet au repos, et une échéance déjà atteinte est traitée tout de suite.
                 await moteur.RemettreAuReposAsync(instance, ct);

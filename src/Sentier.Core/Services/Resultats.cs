@@ -110,6 +110,9 @@ public sealed record EtatInstance
     /// <summary>Nœud courant.</summary>
     public required string CodeNoeudCourant { get; init; }
 
+    /// <summary>Tâche attendue sur le nœud interactif courant (identifiant chez le client), ou <c>null</c>.</summary>
+    public long? IdTacheCourante { get; init; }
+
     /// <summary>Code de fin.</summary>
     public string? CodeFin { get; init; }
 

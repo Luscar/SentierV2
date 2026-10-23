@@ -8,7 +8,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 {
     private const string Colonnes =
         "ID, ID_DEFINITION, CLE_PROCESSUS, ID_INSTANCE_PARENT, CODE_NOEUD_PARENT, CLE_AFFAIRE, INSTANCE_UNIQUE, STATUT, CODE_FIN, " +
-        "CODE_NOEUD_COURANT, VARIABLES, MESSAGE_ERREUR, DATE_ERREUR, VERSION, DATE_CREATION, DATE_MAJ, DATE_FIN";
+        "CODE_NOEUD_COURANT, ID_TACHE_COURANTE, VARIABLES, MESSAGE_ERREUR, DATE_ERREUR, VERSION, DATE_CREATION, DATE_MAJ, DATE_FIN";
 
     private string Table => sql.Noms.Instance;
 
@@ -23,7 +23,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
         instance.Id = new IdInstance(await sql.ProchainIdAsync(sql.Noms.SeqInstance, ct));
         await sql.Connexion.ExecuteAsync(sql.Ecriture(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @idDefinition, @cleProcessus, @idParent, @codeNoeudParent, @cleAffaire, @instanceUnique, @statut, @codeFin, " +
-            "@codeNoeudCourant, @variables, @messageErreur, @dateErreur, @version, @dateCreation, @dateMaj, @dateFin)",
+            "@codeNoeudCourant, @idTacheCourante, @variables, @messageErreur, @dateErreur, @version, @dateCreation, @dateMaj, @dateFin)",
             new
             {
                 id = instance.Id.Valeur,
@@ -36,6 +36,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
                 statut = CodesBase.Code(instance.Statut),
                 codeFin = instance.CodeFin,
                 codeNoeudCourant = instance.CodeNoeudCourant,
+                idTacheCourante = instance.IdTacheCourante,
                 variables = instance.VariablesJson,
                 messageErreur = instance.MessageErreur,
                 dateErreur = instance.DateErreur,
@@ -50,7 +51,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
     public async Task MettreAJourAsync(InstanceProcessus instance, CancellationToken ct)
     {
         var lignes = await sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET ID_DEFINITION = @idDefinition, STATUT = @statut, CODE_FIN = @codeFin, CODE_NOEUD_COURANT = @codeNoeudCourant, " +
+            $"UPDATE {Table} SET ID_DEFINITION = @idDefinition, STATUT = @statut, CODE_FIN = @codeFin, CODE_NOEUD_COURANT = @codeNoeudCourant, ID_TACHE_COURANTE = @idTacheCourante, " +
             "VARIABLES = @variables, MESSAGE_ERREUR = @messageErreur, DATE_ERREUR = @dateErreur, DATE_MAJ = @dateMaj, DATE_FIN = @dateFin, " +
             "VERSION = VERSION + 1 WHERE ID = @id AND VERSION = @version",
             new
@@ -60,6 +61,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
                 statut = CodesBase.Code(instance.Statut),
                 codeFin = instance.CodeFin,
                 codeNoeudCourant = instance.CodeNoeudCourant,
+                idTacheCourante = instance.IdTacheCourante,
                 variables = instance.VariablesJson,
                 messageErreur = instance.MessageErreur,
                 dateErreur = instance.DateErreur,
@@ -174,6 +176,8 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
         public string CODE_NOEUD_COURANT { get; set; } = "";
 
+        public long? ID_TACHE_COURANTE { get; set; }
+
         public string? VARIABLES { get; set; }
 
         public string? MESSAGE_ERREUR { get; set; }
@@ -200,6 +204,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
             Statut = CodesBase.LireStatutInstance(STATUT),
             CodeFin = CODE_FIN,
             CodeNoeudCourant = CODE_NOEUD_COURANT,
+            IdTacheCourante = ID_TACHE_COURANTE,
             VariablesJson = VARIABLES,
             MessageErreur = MESSAGE_ERREUR,
             DateErreur = Utc(DATE_ERREUR),

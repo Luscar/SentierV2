@@ -60,18 +60,24 @@ public static class ExtensionsSentier
             services.TryAddScoped<ISessionSentier, SessionSentierParDefaut>();
         }
 
-        // Gestionnaire de tâches du client : explicite, sinon l'unique implémentation trouvée par balayage.
-        var typeGestionnaireTaches = options.TypeGestionnaireTaches ?? registre.GestionnairesTaches.Count switch
+        // Gestionnaire de tâches du client : explicite (remplace tout enregistrement), sinon déjà enregistré
+        // par le client, sinon l'unique implémentation trouvée par balayage.
+        if (options.TypeGestionnaireTaches is not null)
         {
-            0 => null,
-            1 => registre.GestionnairesTaches[0],
-            _ => throw new SentierException(
-                $"Plusieurs implémentations de IGestionnaireTaches ont été trouvées ({string.Join(", ", registre.GestionnairesTaches.Select(t => t.FullName))}) : "
-                + "choisir celle à utiliser avec UtiliserGestionnaireTaches<T>()."),
-        };
-        if (typeGestionnaireTaches is not null)
+            services.Replace(ServiceDescriptor.Scoped(typeof(IGestionnaireTaches), options.TypeGestionnaireTaches));
+        }
+        else if (!services.Any(d => d.ServiceType == typeof(IGestionnaireTaches)))
         {
-            services.AddScoped(typeof(IGestionnaireTaches), typeGestionnaireTaches);
+            switch (registre.GestionnairesTaches.Count)
+            {
+                case 1:
+                    services.AddScoped(typeof(IGestionnaireTaches), registre.GestionnairesTaches[0]);
+                    break;
+                case > 1:
+                    throw new SentierException(
+                        $"Plusieurs implémentations de IGestionnaireTaches ont été trouvées ({string.Join(", ", registre.GestionnairesTaches.Select(t => t.FullName))}) : "
+                        + "choisir celle à utiliser avec UtiliserGestionnaireTaches<T>().");
+            }
         }
 
         // Commandes et requêtes du client : Scoped, résolues par leur type concret.

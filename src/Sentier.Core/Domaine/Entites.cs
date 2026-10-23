@@ -36,6 +36,12 @@ public sealed class InstanceProcessus
     /// <summary>Code du nœud courant.</summary>
     public string CodeNoeudCourant { get; internal set; } = "";
 
+    /// <summary>
+    /// Identifiant (chez le client) de la tâche attendue sur le nœud interactif courant, ou <c>null</c>.
+    /// C'est la référence de Sentier : seule cette tâche peut reprendre l'instance.
+    /// </summary>
+    public long? IdTacheCourante { get; internal set; }
+
     /// <summary>Variables sérialisées en JSON.</summary>
     internal string? VariablesJson { get; set; }
 

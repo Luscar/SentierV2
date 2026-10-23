@@ -272,8 +272,7 @@ internal sealed class ServiceMigration(
 
             case NoeudInteractif interactifCible when noeudSource is NoeudInteractif interactifSource:
             {
-                var ouvertes = await moteur.Taches.ObtenirTachesOuvertesAsync(instance.Id, ct);
-                if (ouvertes.Count > 0 && regle?.Taches != ActionTaches.Conserver && !InteractifsEquivalents(interactifSource, interactifCible))
+                if (instance.IdTacheCourante is not null && regle?.Taches != ActionTaches.Conserver && !InteractifsEquivalents(interactifSource, interactifCible))
                 {
                     return analyse.Bloquer($"Le nœud interactif '{code}' est modifié alors que des tâches sont ouvertes.");
                 }
@@ -406,7 +405,7 @@ internal sealed class ServiceMigration(
 
         if (analyse.CodeSuite is not null)
         {
-            await moteur.AnnulerTachesAsync(instance.Id, $"Migration vers la v{cible.Version}", ct);
+            await moteur.AnnulerTachesAsync(instance, $"Migration vers la v{cible.Version}", ct);
 
             await attentes.SupprimerParInstanceAsync(instance.Id, ct);
             foreach (var enfant in await instances.ObtenirEnfantsActifsAsync(instance.Id, ct))

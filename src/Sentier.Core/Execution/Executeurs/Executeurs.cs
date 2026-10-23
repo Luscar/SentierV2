@@ -135,7 +135,13 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horlo
             Donnees = ExecuteurAppels.ResoudreParametres(noeud.Donnees, instance, contexte.Variables, libelle),
         };
 
-        await contexte.Moteur.Taches.CreerTacheAsync(demande, ct);
+        if (instance.IdTacheCourante is not null)
+        {
+            // Nouvelle entrée dans le nœud (relance) : la tâche précédente ne doit plus reprendre l'instance.
+            await contexte.Moteur.AnnulerTachesAsync(instance, $"Nouvelle entrée dans le nœud '{noeud.Code}'.", ct);
+        }
+
+        instance.IdTacheCourante = await contexte.Moteur.Taches.CreerTacheAsync(demande, ct);
         return ResultatNoeud.Suspendre();
     }
 
@@ -152,6 +158,8 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horlo
 
         var utilisateur = reprise.Utilisateur ?? contexte.Utilisateur;
         await contexte.Moteur.Taches.CompleterTacheAsync(reprise.Tache.Id, utilisateur, ct);
+        await contexte.Moteur.AnnulerTachesOrphelinesAsync(contexte.Instance, reprise.Tache.Id, ct);
+        contexte.Instance.IdTacheCourante = null;
 
         return ResultatNoeud.Continuer(resultat: utilisateur is null ? "tâche complétée" : $"tâche complétée par {utilisateur}");
     }

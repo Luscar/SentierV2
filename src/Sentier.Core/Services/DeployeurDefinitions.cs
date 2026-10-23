@@ -100,7 +100,7 @@ internal sealed class DeployeurDefinitions(
             }
         }
 
-        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && services.GetService<IGestionnaireTaches>() is null)
+        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && !EstEnregistre<IGestionnaireTaches>())
         {
             erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTaches, et aucun n'est enregistré.");
         }
@@ -120,6 +120,12 @@ internal sealed class DeployeurDefinitions(
 
         return erreurs;
     }
+
+    /// <summary>Vérifie l'enregistrement d'un service sans l'instancier (ses dépendances peuvent manquer au déploiement).</summary>
+    private bool EstEnregistre<T>()
+        => services.GetService<IServiceProviderIsService>() is { } verificateur
+            ? verificateur.IsService(typeof(T))
+            : services.GetService<T>() is not null;
 
     private async Task<ResultatDeploiement> DeployerAsync(DefinitionProcessus definition, CancellationToken ct)
     {

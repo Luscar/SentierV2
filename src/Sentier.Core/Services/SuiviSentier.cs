@@ -78,6 +78,7 @@ internal sealed class SuiviSentier(
             CleAffaire = instance.CleAffaire,
             Statut = instance.Statut,
             CodeNoeudCourant = instance.CodeNoeudCourant,
+            IdTacheCourante = instance.IdTacheCourante,
             CodeFin = instance.CodeFin,
             IdInstanceParent = instance.IdInstanceParent,
             Variables = moteur.ChargerVariables(instance, definition).Valeurs,

@@ -144,17 +144,42 @@ internal sealed class MoteurSentier
         return execution;
     }
 
-    /// <summary>Annule les tâches ouvertes d'une instance par le gestionnaire du client.</summary>
-    internal async Task AnnulerTachesAsync(IdInstance idInstance, string motif, CancellationToken ct)
+    /// <summary>
+    /// Annule, par le gestionnaire du client, la tâche courante et toute autre tâche ouverte de l'instance
+    /// (tâche orpheline d'une transaction annulée), puis oublie la tâche courante. L'instance n'est pas persistée ici.
+    /// </summary>
+    internal async Task AnnulerTachesAsync(InstanceProcessus instance, string motif, CancellationToken ct)
     {
         if (TachesOptionnelles is not { } taches)
         {
+            instance.IdTacheCourante = null;
             return;
         }
 
-        foreach (var tache in await taches.ObtenirTachesOuvertesAsync(idInstance, ct))
+        var aAnnuler = (await taches.ObtenirTachesOuvertesAsync(instance.Id, ct)).Select(t => t.Id).ToList();
+        if (instance.IdTacheCourante is { } courante && !aAnnuler.Contains(courante))
         {
-            await taches.AnnulerTacheAsync(tache.Id, motif, ct);
+            aAnnuler.Insert(0, courante);
+        }
+
+        foreach (var idTache in aAnnuler)
+        {
+            await taches.AnnulerTacheAsync(idTache, motif, ct);
+        }
+
+        instance.IdTacheCourante = null;
+    }
+
+    /// <summary>Annule les tâches encore ouvertes d'une instance autres que <paramref name="idTacheConservee"/> (tâches orphelines).</summary>
+    internal async Task AnnulerTachesOrphelinesAsync(InstanceProcessus instance, long idTacheConservee, CancellationToken ct)
+    {
+        var taches = Taches;
+        foreach (var tache in await taches.ObtenirTachesOuvertesAsync(instance.Id, ct))
+        {
+            if (tache.Id != idTacheConservee)
+            {
+                await taches.AnnulerTacheAsync(tache.Id, "Tâche orpheline : l'instance attendait une autre tâche.", ct);
+            }
         }
     }
 
@@ -165,7 +190,7 @@ internal sealed class MoteurSentier
     internal async Task AnnulerAsync(InstanceProcessus instance, string motif, bool notifierParent, CancellationToken ct)
     {
         var maintenant = Horloge.MaintenantUtc;
-        await AnnulerTachesAsync(instance.Id, motif, ct);
+        await AnnulerTachesAsync(instance, motif, ct);
 
         await _attentes.SupprimerParInstanceAsync(instance.Id, ct);
 
