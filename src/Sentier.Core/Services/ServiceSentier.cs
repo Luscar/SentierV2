@@ -1,3 +1,4 @@
+using Sentier.Definitions;
 using Sentier.Execution;
 using Sentier.Migration;
 using Sentier.Persistance;
@@ -12,7 +13,6 @@ internal sealed class ServiceSentier(
     FournisseurDefinitions definitions,
     IDepotInstances instances,
     IDepotAttentes attentes,
-    IDepotTaches taches,
     DeployeurDefinitions deployeur,
     ServiceMigration migration,
     IHorloge horloge) : IServiceSentier
@@ -37,24 +37,24 @@ internal sealed class ServiceSentier(
         return ResultatExecution.Depuis(execution.Instance);
     }
 
-    public async Task<ResultatExecution> CompleterTacheAsync(long idTacheExterne, IReadOnlyDictionary<string, object?>? donnees = null, string? utilisateur = null, CancellationToken ct = default)
+    public async Task<ResultatExecution> CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees = null, string? utilisateur = null, CancellationToken ct = default)
     {
         session.ExigerTransaction();
-        var tache = await taches.ObtenirParIdExterneAsync(idTacheExterne, ct);
+        var tache = await moteur.Taches.ObtenirTacheAsync(idTache, ct);
         if (tache is null)
         {
-            return ResultatExecution.Aucun($"Aucune tâche Sentier ne correspond à l'identifiant externe {idTacheExterne}.");
+            return ResultatExecution.Aucun($"Aucune tâche ne correspond à l'identifiant {idTache}.");
         }
 
         var instance = await instances.ObtenirAsync(tache.IdInstance, ct);
         if (tache.Statut != StatutTache.Ouverte)
         {
-            return ResultatExecution.Aucun($"La tâche {idTacheExterne} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.", instance);
+            return ResultatExecution.Aucun($"La tâche {idTache} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.", instance);
         }
 
         if (instance is null || !instance.EstAuRepos || instance.CodeNoeudCourant != tache.CodeNoeud)
         {
-            return ResultatExecution.Aucun($"L'instance n'attend plus la tâche {idTacheExterne}.", instance);
+            return ResultatExecution.Aucun($"L'instance n'attend plus la tâche {idTache}.", instance);
         }
 
         var auteur = utilisateur ?? moteur.UtilisateurCourant;
@@ -194,7 +194,9 @@ internal sealed class ServiceSentier(
         if (noeud.EstSuspensif)
         {
             var enAttente = await attentes.ObtenirParInstanceAsync(instance.Id, ct);
-            var enTache = await taches.ObtenirOuvertesAsync(instance.Id, ct);
+            IReadOnlyList<TacheUtilisateur> enTache = noeud is NoeudInteractif && moteur.TachesOptionnelles is { } taches
+                ? await taches.ObtenirTachesOuvertesAsync(instance.Id, ct)
+                : [];
             var enfants = await instances.ObtenirEnfantsActifsAsync(instance.Id, ct);
             if (enAttente.Count > 0 || enTache.Count > 0 || enfants.Count > 0)
             {

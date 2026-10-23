@@ -23,7 +23,6 @@ public static class SentierDapper
         SqlMapper.AddTypeHandler(new GestionnaireIdentifiant<IdInstance>());
         SqlMapper.AddTypeHandler(new GestionnaireIdentifiant<IdPassageNoeud>());
         SqlMapper.AddTypeHandler(new GestionnaireIdentifiant<IdAttente>());
-        SqlMapper.AddTypeHandler(new GestionnaireIdentifiant<IdTache>());
         SqlMapper.AddTypeHandler(new GestionnaireIdentifiant<IdMigration>());
     }
 

@@ -62,17 +62,6 @@ public readonly record struct IdAttente(long Valeur) : IIdentifiant<IdAttente>
     public override string ToString() => Valeur.ToString(CultureInfo.InvariantCulture);
 }
 
-/// <summary>Identifiant d'une tâche utilisateur (lien avec le bassin de tâches).</summary>
-[JsonConverter(typeof(ConvertisseurJsonIdentifiant<IdTache>))]
-public readonly record struct IdTache(long Valeur) : IIdentifiant<IdTache>
-{
-    /// <inheritdoc />
-    public static IdTache Depuis(long valeur) => new(valeur);
-
-    /// <inheritdoc />
-    public override string ToString() => Valeur.ToString(CultureInfo.InvariantCulture);
-}
-
 /// <summary>Identifiant d'une trace de migration.</summary>
 [JsonConverter(typeof(ConvertisseurJsonIdentifiant<IdMigration>))]
 public readonly record struct IdMigration(long Valeur) : IIdentifiant<IdMigration>

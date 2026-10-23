@@ -10,8 +10,7 @@ internal sealed class SuiviSentier(
     FournisseurDefinitions definitions,
     IDepotInstances instances,
     IDepotHistorique historique,
-    IDepotAttentes attentes,
-    IDepotTaches taches) : ISuiviSentier
+    IDepotAttentes attentes) : ISuiviSentier
 {
     public async Task<EtatInstance?> ObtenirInstanceAsync(IdInstance idInstance, CancellationToken ct = default)
     {
@@ -35,8 +34,8 @@ internal sealed class SuiviSentier(
     public Task<IReadOnlyList<Attente>> ObtenirAttentesAsync(IdInstance idInstance, CancellationToken ct = default)
         => attentes.ObtenirParInstanceAsync(idInstance, ct);
 
-    public Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default)
-        => taches.ObtenirOuvertesAsync(idInstance, ct);
+    public async Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default)
+        => moteur.TachesOptionnelles is { } taches ? await taches.ObtenirTachesOuvertesAsync(idInstance, ct) : [];
 
     public async Task<IReadOnlyList<EtatInstance>> ObtenirInstancesEnErreurAsync(int page = 0, int taille = 50, CancellationToken ct = default)
     {

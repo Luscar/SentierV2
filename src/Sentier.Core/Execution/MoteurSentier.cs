@@ -19,7 +19,6 @@ internal sealed class MoteurSentier
     private readonly IDepotInstances _instances;
     private readonly IDepotHistorique _historique;
     private readonly IDepotAttentes _attentes;
-    private readonly IDepotTaches _taches;
     private readonly ISerialiseurVariables _serialiseur;
     private readonly OptionsSentier _options;
     private readonly ILogger _logger;
@@ -34,7 +33,6 @@ internal sealed class MoteurSentier
         IDepotInstances instances,
         IDepotHistorique historique,
         IDepotAttentes attentes,
-        IDepotTaches taches,
         IEnumerable<IExecuteurNoeud> executeurs,
         ISerialiseurVariables serialiseur,
         IHorloge horloge,
@@ -45,7 +43,6 @@ internal sealed class MoteurSentier
         _instances = instances;
         _historique = historique;
         _attentes = attentes;
-        _taches = taches;
         _serialiseur = serialiseur;
         Horloge = horloge;
         _options = options;
@@ -63,8 +60,12 @@ internal sealed class MoteurSentier
 
     internal string? UtilisateurCourant => _services.GetService<IContexteUtilisateur>()?.Utilisateur;
 
-    internal IBassinTaches Bassin => _services.GetService<IBassinTaches>()
-        ?? throw new SentierException("Aucun IBassinTaches n'est enregistré : un nœud interactif ne peut pas créer ni annuler de tâche.");
+    /// <summary>Gestionnaire de tâches du client ; lève une erreur s'il n'est pas enregistré.</summary>
+    internal IGestionnaireTaches Taches => TachesOptionnelles
+        ?? throw new SentierException("Aucun IGestionnaireTaches n'est enregistré : un nœud interactif ne peut pas gérer de tâche.");
+
+    /// <summary>Gestionnaire de tâches du client, ou <c>null</c> : sans gestionnaire, aucune tâche n'a pu être créée.</summary>
+    internal IGestionnaireTaches? TachesOptionnelles => _services.GetService<IGestionnaireTaches>();
 
     internal VariablesProcessus ChargerVariables(InstanceProcessus instance, DefinitionProcessus definition)
         => VariablesProcessus.Charger(definition.Declarations, _serialiseur, instance.VariablesJson);
@@ -143,20 +144,28 @@ internal sealed class MoteurSentier
         return execution;
     }
 
+    /// <summary>Annule les tâches ouvertes d'une instance par le gestionnaire du client.</summary>
+    internal async Task AnnulerTachesAsync(IdInstance idInstance, string motif, CancellationToken ct)
+    {
+        if (TachesOptionnelles is not { } taches)
+        {
+            return;
+        }
+
+        foreach (var tache in await taches.ObtenirTachesOuvertesAsync(idInstance, ct))
+        {
+            await taches.AnnulerTacheAsync(tache.Id, motif, ct);
+        }
+    }
+
     /// <summary>
-    /// Annule une instance : tâches ouvertes annulées dans le bassin, attentes supprimées,
+    /// Annule une instance : tâches ouvertes annulées par le gestionnaire du client, attentes supprimées,
     /// sous-processus actifs annulés en cascade.
     /// </summary>
     internal async Task AnnulerAsync(InstanceProcessus instance, string motif, bool notifierParent, CancellationToken ct)
     {
         var maintenant = Horloge.MaintenantUtc;
-        foreach (var tache in await _taches.ObtenirOuvertesAsync(instance.Id, ct))
-        {
-            await Bassin.AnnulerTacheAsync(tache.IdTacheExterne, motif, ct);
-            tache.Statut = StatutTache.Annulee;
-            tache.DateCompletion = maintenant;
-            await _taches.MettreAJourAsync(tache, ct);
-        }
+        await AnnulerTachesAsync(instance.Id, motif, ct);
 
         await _attentes.SupprimerParInstanceAsync(instance.Id, ct);
 

@@ -68,24 +68,6 @@ public static class CodesBase
         _ => throw new SentierException($"Type de déclencheur inconnu en base : '{code}'."),
     };
 
-    /// <summary>Code d'un statut de tâche.</summary>
-    public static string Code(StatutTache statut) => statut switch
-    {
-        StatutTache.Ouverte => "OUVERTE",
-        StatutTache.Completee => "COMPLETEE",
-        StatutTache.Annulee => "ANNULEE",
-        _ => throw new ArgumentOutOfRangeException(nameof(statut)),
-    };
-
-    /// <summary>Statut de tâche d'un code.</summary>
-    public static StatutTache LireStatutTache(string code) => code switch
-    {
-        "OUVERTE" => StatutTache.Ouverte,
-        "COMPLETEE" => StatutTache.Completee,
-        "ANNULEE" => StatutTache.Annulee,
-        _ => throw new SentierException($"Statut de tâche inconnu en base : '{code}'."),
-    };
-
     /// <summary>Code d'un mode de migration.</summary>
     public static string Code(ModeMigration mode) => mode == ModeMigration.Auto ? "AUTO" : "PLAN";
 }

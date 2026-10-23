@@ -22,19 +22,55 @@ public interface IContexteUtilisateur
 }
 
 /// <summary>
-/// Bassin de tâches existant chez le client, auquel Sentier délègue les tâches utilisateurs.
-/// S'il est en base, il doit utiliser la même session (donc la même transaction) que Sentier.
+/// Gestion des tâches utilisateurs, implémentée par le client et injectée (Scoped), au même titre que ses
+/// commandes et requêtes : Sentier ne stocke aucune tâche. Le client crée, conserve, complète et annule ses tâches ;
+/// Sentier lui délègue chaque étape du cycle de vie. S'il est en base, il doit utiliser la même session
+/// (donc la même transaction) que Sentier.
 /// </summary>
-public interface IBassinTaches
+/// <remarks>
+/// Découverte par balayage d'assemblys (une seule implémentation), ou enregistrée explicitement par
+/// <see cref="OptionsSentier.UtiliserGestionnaireTaches{T}"/>.
+/// </remarks>
+public interface IGestionnaireTaches
 {
-    /// <summary>Crée une tâche et retourne son identifiant externe.</summary>
+    /// <summary>Crée une tâche ouverte pour un nœud interactif et retourne son identifiant.</summary>
     Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct = default);
 
-    /// <summary>Annule une tâche à partir de son identifiant externe.</summary>
-    Task AnnulerTacheAsync(long idTacheExterne, string motif, CancellationToken ct = default);
+    /// <summary>Tâche par identifiant, ou <c>null</c> si elle est inconnue.</summary>
+    Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, CancellationToken ct = default);
+
+    /// <summary>Tâches ouvertes d'une instance.</summary>
+    Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
+
+    /// <summary>
+    /// Marque une tâche complétée. Appelée par Sentier pendant <c>CompleterTacheAsync</c>, après les commandes de sortie.
+    /// </summary>
+    Task CompleterTacheAsync(long idTache, string? utilisateur, CancellationToken ct = default);
+
+    /// <summary>Annule une tâche ouverte (annulation de l'instance, migration).</summary>
+    Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct = default);
+
+    /// <summary>Rattache les tâches ouvertes d'une instance à un nœud renommé (migration).</summary>
+    Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct = default);
 }
 
-/// <summary>Demande de création d'une tâche dans le bassin du client.</summary>
+/// <summary>Tâche utilisateur telle que la voit Sentier, fournie par le <see cref="IGestionnaireTaches"/> du client.</summary>
+public sealed class TacheUtilisateur
+{
+    /// <summary>Identifiant de la tâche chez le client.</summary>
+    public required long Id { get; init; }
+
+    /// <summary>Instance à l'origine de la tâche.</summary>
+    public required IdInstance IdInstance { get; init; }
+
+    /// <summary>Code du nœud interactif.</summary>
+    public required string CodeNoeud { get; init; }
+
+    /// <summary>Statut de la tâche.</summary>
+    public required StatutTache Statut { get; init; }
+}
+
+/// <summary>Demande de création d'une tâche, transmise au <see cref="IGestionnaireTaches"/> du client.</summary>
 public sealed class DemandeTacheUtilisateur
 {
     /// <summary>Instance à l'origine de la tâche.</summary>

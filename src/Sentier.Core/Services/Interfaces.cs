@@ -15,8 +15,11 @@ public interface IServiceSentier
     /// </summary>
     Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, CancellationToken ct = default);
 
-    /// <summary>Complète une tâche utilisateur à partir de son identifiant externe, puis reprend l'instance.</summary>
-    Task<ResultatExecution> CompleterTacheAsync(long idTacheExterne, IReadOnlyDictionary<string, object?>? donnees = null, string? utilisateur = null, CancellationToken ct = default);
+    /// <summary>
+    /// Complète une tâche utilisateur à partir de son identifiant chez le client, puis reprend l'instance
+    /// (fusion des données, commandes de sortie, puis <see cref="IGestionnaireTaches.CompleterTacheAsync"/>).
+    /// </summary>
+    Task<ResultatExecution> CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees = null, string? utilisateur = null, CancellationToken ct = default);
 
     /// <summary>Envoie un signal aux instances qui l'attendent (processus + clé d'affaire, corrélation, ou les deux).</summary>
     Task<ResultatSignal> EnvoyerSignalAsync(Signal signal, CancellationToken ct = default);
@@ -67,7 +70,7 @@ public interface ISuiviSentier
     /// <summary>Déclencheurs en cours d'une instance.</summary>
     Task<IReadOnlyList<Attente>> ObtenirAttentesAsync(IdInstance idInstance, CancellationToken ct = default);
 
-    /// <summary>Tâches utilisateurs ouvertes d'une instance.</summary>
+    /// <summary>Tâches utilisateurs ouvertes d'une instance, lues par le gestionnaire de tâches du client.</summary>
     Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
 
     /// <summary>Instances en erreur, paginées (page à partir de 0).</summary>

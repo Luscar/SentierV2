@@ -22,7 +22,6 @@ internal sealed class ServiceMigration(
     FournisseurDefinitions definitions,
     IDepotInstances instances,
     IDepotAttentes attentes,
-    IDepotTaches taches,
     IDepotHistorique historique,
     IDepotMigrations migrations,
     MoteurSentier moteur,
@@ -273,7 +272,7 @@ internal sealed class ServiceMigration(
 
             case NoeudInteractif interactifCible when noeudSource is NoeudInteractif interactifSource:
             {
-                var ouvertes = await taches.ObtenirOuvertesAsync(instance.Id, ct);
+                var ouvertes = await moteur.Taches.ObtenirTachesOuvertesAsync(instance.Id, ct);
                 if (ouvertes.Count > 0 && regle?.Taches != ActionTaches.Conserver && !InteractifsEquivalents(interactifSource, interactifCible))
                 {
                     return analyse.Bloquer($"Le nœud interactif '{code}' est modifié alors que des tâches sont ouvertes.");
@@ -407,13 +406,7 @@ internal sealed class ServiceMigration(
 
         if (analyse.CodeSuite is not null)
         {
-            foreach (var tache in await taches.ObtenirOuvertesAsync(instance.Id, ct))
-            {
-                await moteur.Bassin.AnnulerTacheAsync(tache.IdTacheExterne, $"Migration vers la v{cible.Version}", ct);
-                tache.Statut = StatutTache.Annulee;
-                tache.DateCompletion = maintenant;
-                await taches.MettreAJourAsync(tache, ct);
-            }
+            await moteur.AnnulerTachesAsync(instance.Id, $"Migration vers la v{cible.Version}", ct);
 
             await attentes.SupprimerParInstanceAsync(instance.Id, ct);
             foreach (var enfant in await instances.ObtenirEnfantsActifsAsync(instance.Id, ct))
@@ -428,7 +421,10 @@ internal sealed class ServiceMigration(
             if (analyse.CodeCible != codeSource)
             {
                 await attentes.RenommerNoeudAsync(instance.Id, codeSource, analyse.CodeCible, ct);
-                await taches.RenommerNoeudAsync(instance.Id, codeSource, analyse.CodeCible, ct);
+                if (moteur.TachesOptionnelles is { } taches)
+                {
+                    await taches.RenommerNoeudAsync(instance.Id, codeSource, analyse.CodeCible, ct);
+                }
                 await instances.RenommerNoeudParentAsync(instance.Id, codeSource, analyse.CodeCible, ct);
             }
 

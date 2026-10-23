@@ -100,6 +100,11 @@ internal sealed class DeployeurDefinitions(
             }
         }
 
+        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && services.GetService<IGestionnaireTaches>() is null)
+        {
+            erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTaches, et aucun n'est enregistré.");
+        }
+
         foreach (var sousProcessus in definition.Noeuds.OfType<NoeudSousProcessus>())
         {
             var enfant = deployees.GetValueOrDefault(sousProcessus.CleProcessus)

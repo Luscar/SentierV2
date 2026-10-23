@@ -31,7 +31,7 @@ public enum TypeNoeud
     /// <summary>Attend une échéance et/ou un ou plusieurs signaux.</summary>
     Attente,
 
-    /// <summary>Crée une tâche dans le bassin de tâches du client.</summary>
+    /// <summary>Crée une tâche par le gestionnaire de tâches du client.</summary>
     Interactif,
 
     /// <summary>Passerelle exclusive évaluant des requêtes.</summary>
@@ -105,7 +105,7 @@ public enum TypeDeclencheur
     Signal,
 }
 
-/// <summary>Statut d'une tâche utilisateur côté Sentier.</summary>
+/// <summary>Statut d'une tâche utilisateur, tenu par le gestionnaire de tâches du client.</summary>
 public enum StatutTache
 {
     /// <summary>La tâche attend d'être complétée.</summary>
