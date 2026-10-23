@@ -15,6 +15,12 @@ public sealed record ResultatExecution
     /// <summary>Code de fin, si l'instance est terminée.</summary>
     public string? CodeFin { get; init; }
 
+    /// <summary>
+    /// Tâche attendue sur le nœud interactif courant (identifiant chez le client), ou <c>null</c>.
+    /// Une tâche attendue par un sous-processus est portée par l'instance enfant.
+    /// </summary>
+    public long? IdTacheCourante { get; init; }
+
     /// <summary>Vrai s'il ne s'est rien passé (action idempotente).</summary>
     public bool SansEffet { get; init; }
 
@@ -28,6 +34,7 @@ public sealed record ResultatExecution
         Statut = instance.Statut,
         CodeNoeudCourant = instance.CodeNoeudCourant,
         CodeFin = instance.CodeFin,
+        IdTacheCourante = instance.IdTacheCourante,
     };
 
     /// <summary>Résultat d'une action sans effet.</summary>
@@ -37,6 +44,7 @@ public sealed record ResultatExecution
         Statut = instance?.Statut,
         CodeNoeudCourant = instance?.CodeNoeudCourant,
         CodeFin = instance?.CodeFin,
+        IdTacheCourante = instance?.IdTacheCourante,
         SansEffet = true,
         Raison = raison,
     };
@@ -109,6 +117,9 @@ public sealed record EtatInstance
 
     /// <summary>Nœud courant.</summary>
     public required string CodeNoeudCourant { get; init; }
+
+    /// <summary>Tâche attendue sur le nœud interactif courant (identifiant chez le client), ou <c>null</c>.</summary>
+    public long? IdTacheCourante { get; init; }
 
     /// <summary>Code de fin.</summary>
     public string? CodeFin { get; init; }

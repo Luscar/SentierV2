@@ -103,7 +103,7 @@ internal sealed class ExecuteurAttente(ExecuteurAppels appels, PlanificateurAtte
 }
 
 /// <summary>Interactif : commandes d'entrée, création de la tâche ; à la complétion, fusion des données et commandes de sortie.</summary>
-internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IDepotTaches taches, IHorloge horloge) : IExecuteurNoeud
+internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horloge) : IExecuteurNoeud
 {
     public TypeNoeud Type => TypeNoeud.Interactif;
 
@@ -135,16 +135,13 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IDepotTaches t
             Donnees = ExecuteurAppels.ResoudreParametres(noeud.Donnees, instance, contexte.Variables, libelle),
         };
 
-        var idExterne = await contexte.Moteur.Bassin.CreerTacheAsync(demande, ct);
-        await taches.InsererAsync(new TacheUtilisateur
+        if (instance.IdTacheCourante is not null)
         {
-            IdInstance = instance.Id,
-            CodeNoeud = noeud.Code,
-            IdTacheExterne = idExterne,
-            Statut = StatutTache.Ouverte,
-            DateCreation = maintenant,
-        }, ct);
+            // Nouvelle entrée dans le nœud (relance) : la tâche précédente ne doit plus reprendre l'instance.
+            await contexte.Moteur.AnnulerTachesAsync(instance, $"Nouvelle entrée dans le nœud '{noeud.Code}'.", ct);
+        }
 
+        instance.IdTacheCourante = await contexte.Moteur.Taches.CreerTacheAsync(demande, ct);
         return ResultatNoeud.Suspendre();
     }
 
@@ -159,11 +156,11 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IDepotTaches t
         contexte.Variables.Fusionner(reprise.Donnees);
         await appels.ExecuterCommandesAsync(noeud.CommandesSortie, contexte, MomentCommande.Sortie, reprise.Donnees ?? new Dictionary<string, object?>(), ct);
 
-        reprise.Tache.Statut = StatutTache.Completee;
-        reprise.Tache.DateCompletion = horloge.MaintenantUtc;
-        await taches.MettreAJourAsync(reprise.Tache, ct);
-
         var utilisateur = reprise.Utilisateur ?? contexte.Utilisateur;
+        await contexte.Moteur.Taches.CompleterTacheAsync(reprise.Tache.Id, reprise.Donnees, utilisateur, ct);
+        await contexte.Moteur.AnnulerTachesOrphelinesAsync(contexte.Instance, reprise.Tache.Id, ct);
+        contexte.Instance.IdTacheCourante = null;
+
         return ResultatNoeud.Continuer(resultat: utilisateur is null ? "tâche complétée" : $"tâche complétée par {utilisateur}");
     }
 }

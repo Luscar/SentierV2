@@ -19,7 +19,6 @@ internal sealed class MoteurSentier
     private readonly IDepotInstances _instances;
     private readonly IDepotHistorique _historique;
     private readonly IDepotAttentes _attentes;
-    private readonly IDepotTaches _taches;
     private readonly ISerialiseurVariables _serialiseur;
     private readonly OptionsSentier _options;
     private readonly ILogger _logger;
@@ -34,7 +33,6 @@ internal sealed class MoteurSentier
         IDepotInstances instances,
         IDepotHistorique historique,
         IDepotAttentes attentes,
-        IDepotTaches taches,
         IEnumerable<IExecuteurNoeud> executeurs,
         ISerialiseurVariables serialiseur,
         IHorloge horloge,
@@ -45,7 +43,6 @@ internal sealed class MoteurSentier
         _instances = instances;
         _historique = historique;
         _attentes = attentes;
-        _taches = taches;
         _serialiseur = serialiseur;
         Horloge = horloge;
         _options = options;
@@ -63,8 +60,12 @@ internal sealed class MoteurSentier
 
     internal string? UtilisateurCourant => _services.GetService<IContexteUtilisateur>()?.Utilisateur;
 
-    internal IBassinTaches Bassin => _services.GetService<IBassinTaches>()
-        ?? throw new SentierException("Aucun IBassinTaches n'est enregistré : un nœud interactif ne peut pas créer ni annuler de tâche.");
+    /// <summary>Gestionnaire de tâches du client ; lève une erreur s'il n'est pas enregistré.</summary>
+    internal IGestionnaireTaches Taches => TachesOptionnelles
+        ?? throw new SentierException("Aucun IGestionnaireTaches n'est enregistré : un nœud interactif ne peut pas gérer de tâche.");
+
+    /// <summary>Gestionnaire de tâches du client, ou <c>null</c> : sans gestionnaire, aucune tâche n'a pu être créée.</summary>
+    internal IGestionnaireTaches? TachesOptionnelles => _services.GetService<IGestionnaireTaches>();
 
     internal VariablesProcessus ChargerVariables(InstanceProcessus instance, DefinitionProcessus definition)
         => VariablesProcessus.Charger(definition.Declarations, _serialiseur, instance.VariablesJson);
@@ -144,19 +145,52 @@ internal sealed class MoteurSentier
     }
 
     /// <summary>
-    /// Annule une instance : tâches ouvertes annulées dans le bassin, attentes supprimées,
+    /// Annule, par le gestionnaire du client, la tâche courante et toute autre tâche ouverte de l'instance
+    /// (tâche orpheline d'une transaction annulée), puis oublie la tâche courante. L'instance n'est pas persistée ici.
+    /// </summary>
+    internal async Task AnnulerTachesAsync(InstanceProcessus instance, string motif, CancellationToken ct)
+    {
+        if (TachesOptionnelles is not { } taches)
+        {
+            instance.IdTacheCourante = null;
+            return;
+        }
+
+        var aAnnuler = (await taches.ObtenirTachesOuvertesAsync(instance.Id, ct)).Select(t => t.Id).ToList();
+        if (instance.IdTacheCourante is { } courante && !aAnnuler.Contains(courante))
+        {
+            aAnnuler.Insert(0, courante);
+        }
+
+        foreach (var idTache in aAnnuler)
+        {
+            await taches.AnnulerTacheAsync(idTache, motif, ct);
+        }
+
+        instance.IdTacheCourante = null;
+    }
+
+    /// <summary>Annule les tâches encore ouvertes d'une instance autres que <paramref name="idTacheConservee"/> (tâches orphelines).</summary>
+    internal async Task AnnulerTachesOrphelinesAsync(InstanceProcessus instance, long idTacheConservee, CancellationToken ct)
+    {
+        var taches = Taches;
+        foreach (var tache in await taches.ObtenirTachesOuvertesAsync(instance.Id, ct))
+        {
+            if (tache.Id != idTacheConservee)
+            {
+                await taches.AnnulerTacheAsync(tache.Id, "Tâche orpheline : l'instance attendait une autre tâche.", ct);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Annule une instance : tâches ouvertes annulées par le gestionnaire du client, attentes supprimées,
     /// sous-processus actifs annulés en cascade.
     /// </summary>
     internal async Task AnnulerAsync(InstanceProcessus instance, string motif, bool notifierParent, CancellationToken ct)
     {
         var maintenant = Horloge.MaintenantUtc;
-        foreach (var tache in await _taches.ObtenirOuvertesAsync(instance.Id, ct))
-        {
-            await Bassin.AnnulerTacheAsync(tache.IdTacheExterne, motif, ct);
-            tache.Statut = StatutTache.Annulee;
-            tache.DateCompletion = maintenant;
-            await _taches.MettreAJourAsync(tache, ct);
-        }
+        await AnnulerTachesAsync(instance, motif, ct);
 
         await _attentes.SupprimerParInstanceAsync(instance.Id, ct);
 

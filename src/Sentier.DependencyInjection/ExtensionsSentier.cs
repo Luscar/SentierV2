@@ -17,7 +17,8 @@ namespace Sentier.DependencyInjection;
 public static class ExtensionsSentier
 {
     /// <summary>
-    /// Enregistre Sentier : options, registre des commandes / requêtes / définitions / plans (balayage d'assemblys),
+    /// Enregistre Sentier : options, registre des commandes / requêtes / définitions / plans / gestionnaire de tâches
+    /// (balayage d'assemblys),
     /// moteur, services, dépôts Dapper et dialecte. N'enregistre jamais d'<see cref="System.Data.IDbConnection"/> :
     /// la connexion est fournie par le client (Scoped, déjà ouverte).
     /// </summary>
@@ -26,8 +27,8 @@ public static class ExtensionsSentier
     /// services.AddScoped&lt;IDbConnection&gt;(_ => OuvrirConnexion());
     /// services.AddSentier(o =>
     /// {
-    ///     o.PrefixeTables = "AT_PROC";
-    ///     o.UtiliserOracle().BalayerAssemblyDe&lt;Program&gt;().UtiliserBassinTaches&lt;MonBassinTaches&gt;();
+    ///     o.PrefixeTables = "SENTIER";
+    ///     o.UtiliserOracle().BalayerAssemblyDe&lt;Program&gt;();   // trouve aussi l'IGestionnaireTaches du client
     /// });
     /// </code>
     /// </example>
@@ -59,9 +60,24 @@ public static class ExtensionsSentier
             services.TryAddScoped<ISessionSentier, SessionSentierParDefaut>();
         }
 
-        if (options.TypeBassinTaches is not null)
+        // Gestionnaire de tâches du client : explicite (remplace tout enregistrement), sinon déjà enregistré
+        // par le client, sinon l'unique implémentation trouvée par balayage.
+        if (options.TypeGestionnaireTaches is not null)
         {
-            services.AddScoped(typeof(IBassinTaches), options.TypeBassinTaches);
+            services.Replace(ServiceDescriptor.Scoped(typeof(IGestionnaireTaches), options.TypeGestionnaireTaches));
+        }
+        else if (!services.Any(d => d.ServiceType == typeof(IGestionnaireTaches)))
+        {
+            switch (registre.GestionnairesTaches.Count)
+            {
+                case 1:
+                    services.AddScoped(typeof(IGestionnaireTaches), registre.GestionnairesTaches[0]);
+                    break;
+                case > 1:
+                    throw new SentierException(
+                        $"Plusieurs implémentations de IGestionnaireTaches ont été trouvées ({string.Join(", ", registre.GestionnairesTaches.Select(t => t.FullName))}) : "
+                        + "choisir celle à utiliser avec UtiliserGestionnaireTaches<T>().");
+            }
         }
 
         // Commandes et requêtes du client : Scoped, résolues par leur type concret.
@@ -76,7 +92,6 @@ public static class ExtensionsSentier
         services.TryAddScoped<IDepotInstances, DepotInstancesDapper>();
         services.TryAddScoped<IDepotHistorique, DepotHistoriqueDapper>();
         services.TryAddScoped<IDepotAttentes, DepotAttentesDapper>();
-        services.TryAddScoped<IDepotTaches, DepotTachesDapper>();
         services.TryAddScoped<IDepotMigrations, DepotMigrationsDapper>();
         services.TryAddScoped<InstallateurSchemaSentier>();
 

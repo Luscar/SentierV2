@@ -36,6 +36,12 @@ public sealed class InstanceProcessus
     /// <summary>Code du nœud courant.</summary>
     public string CodeNoeudCourant { get; internal set; } = "";
 
+    /// <summary>
+    /// Identifiant (chez le client) de la tâche attendue sur le nœud interactif courant, ou <c>null</c>.
+    /// C'est la référence de Sentier : seule cette tâche peut reprendre l'instance.
+    /// </summary>
+    public long? IdTacheCourante { get; internal set; }
+
     /// <summary>Variables sérialisées en JSON.</summary>
     internal string? VariablesJson { get; set; }
 
@@ -118,31 +124,6 @@ public sealed class Attente
 
     /// <summary>Date (UTC) de création.</summary>
     public DateTime DateCreation { get; internal set; }
-}
-
-/// <summary>Lien entre un nœud interactif d'une instance et la tâche créée dans le bassin du client.</summary>
-public sealed class TacheUtilisateur
-{
-    /// <summary>Identifiant Sentier de la tâche.</summary>
-    public IdTache Id { get; internal set; }
-
-    /// <summary>Instance concernée.</summary>
-    public IdInstance IdInstance { get; internal set; }
-
-    /// <summary>Code du nœud interactif.</summary>
-    public string CodeNoeud { get; internal set; } = "";
-
-    /// <summary>Identifiant de la tâche dans le bassin du client.</summary>
-    public long IdTacheExterne { get; internal set; }
-
-    /// <summary>Statut de la tâche.</summary>
-    public StatutTache Statut { get; internal set; }
-
-    /// <summary>Date (UTC) de création.</summary>
-    public DateTime DateCreation { get; internal set; }
-
-    /// <summary>Date (UTC) de complétion ou d'annulation.</summary>
-    public DateTime? DateCompletion { get; internal set; }
 }
 
 /// <summary>Trace d'une migration d'instance vers une autre version.</summary>

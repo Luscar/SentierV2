@@ -45,9 +45,6 @@ public sealed partial class NomsObjets
     /// <summary>Table des attentes.</summary>
     public string Attente => Nom("_ATTENTE");
 
-    /// <summary>Table des tâches utilisateurs.</summary>
-    public string Tache => Nom("_TACHE");
-
     /// <summary>Table des traces de migration.</summary>
     public string Migration => Nom("_MIGRATION");
 
@@ -68,9 +65,6 @@ public sealed partial class NomsObjets
 
     /// <summary>Séquence des attentes.</summary>
     public string SeqAttente => Nom("_SEQ_ATTENTE");
-
-    /// <summary>Séquence des tâches.</summary>
-    public string SeqTache => Nom("_SEQ_TACHE");
 
     /// <summary>Séquence des migrations.</summary>
     public string SeqMigration => Nom("_SEQ_MIGRATION");

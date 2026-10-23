@@ -100,25 +100,6 @@ public interface IDepotAttentes
     Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct);
 }
 
-/// <summary>Dépôt des tâches utilisateurs.</summary>
-public interface IDepotTaches
-{
-    /// <summary>Insère une tâche.</summary>
-    Task InsererAsync(TacheUtilisateur tache, CancellationToken ct);
-
-    /// <summary>Tâche par identifiant externe (la plus récente).</summary>
-    Task<TacheUtilisateur?> ObtenirParIdExterneAsync(long idTacheExterne, CancellationToken ct);
-
-    /// <summary>Tâches ouvertes d'une instance.</summary>
-    Task<IReadOnlyList<TacheUtilisateur>> ObtenirOuvertesAsync(IdInstance idInstance, CancellationToken ct);
-
-    /// <summary>Met à jour le statut et la date de complétion d'une tâche.</summary>
-    Task MettreAJourAsync(TacheUtilisateur tache, CancellationToken ct);
-
-    /// <summary>Renomme le nœud des tâches ouvertes d'une instance (migration).</summary>
-    Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct);
-}
-
 /// <summary>Dépôt des traces de migration.</summary>
 public interface IDepotMigrations
 {

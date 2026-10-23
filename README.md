@@ -23,10 +23,9 @@ services.AddScoped<IDbConnection>(_ => OuvrirConnexionOracle());
 
 services.AddSentier(o =>
 {
-    o.PrefixeTables = "AT_PROC";              // obligatoire : lettres, chiffres, '_' (12 caractères max)
+    o.PrefixeTables = "SENTIER";              // obligatoire : lettres, chiffres, '_' (12 caractères max)
     o.UtiliserOracle();                       // ou o.UtiliserSqlite()
-    o.BalayerAssemblyDe<Program>();           // commandes, requêtes, définitions, plans de migration
-    o.UtiliserBassinTaches<MonBassinTaches>();
+    o.BalayerAssemblyDe<Program>();           // commandes, requêtes, définitions, plans de migration, gestionnaire de tâches
     o.MaxEtapesParExecution = 1000;           // protection contre les boucles infinies
 });
 ```
@@ -129,9 +128,49 @@ Paramètres d'un appel : `Valeur(nom, valeur)` (statique), `Variable(nom, variab
 - Signaux : processus + clé d'affaire, clé de corrélation, ou les deux. Recherches : clé d'affaire + une ou plusieurs clés de processus.
 - Sentier ne vérifie pas que la clé existe chez le client (à faire, au besoin, dans une commande en début de processus).
 
-## 6. Bassin de tâches
+## 6. Gestion des tâches
 
-Le client implémente `IBassinTaches` (`CreerTacheAsync` → identifiant externe `long`, `AnnulerTacheAsync`). S'il est en base, il utilise la même session, donc la même transaction. La complétion revient par `CompleterTacheAsync(idExterne, données, utilisateur)` : les données sont fusionnées pour les seules variables déclarées, puis les commandes de sortie s'exécutent.
+Comme les définitions, les commandes et les requêtes, les tâches sont l'affaire du client : il implémente `IGestionnaireTaches`, injecté en Scoped. Sentier **ne stocke aucune tâche** (pas de table `_TACHE`) ; il délègue au gestionnaire chaque étape du cycle de vie (`TacheUtilisateur` : identifiant `long`, instance, nœud, statut).
+
+Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COURANTE` sur l'instance (`EtatInstance.IdTacheCourante`), écrit dans la transaction de Sentier. **Seule cette tâche reprend l'instance**, quel que soit le statut tenu par le client :
+
+- une tâche orpheline (créée chez le client, transaction de Sentier annulée) ou périmée est `SansEffet` ; les tâches orphelines encore ouvertes sont annulées quand l'instance quitte le nœud ;
+- une tâche marquée complétée chez le client alors que la transaction de Sentier a échoué peut être complétée de nouveau : l'instance repart ;
+- une tâche annulée chez le client alors que l'instance l'attend est `SansEffet` (l'instance reste en attente ; l'annuler par `AnnulerAsync`).
+
+| Méthode | Appelée par Sentier |
+|---|---|
+| `CreerTacheAsync(demande)` → identifiant | à l'entrée d'un nœud interactif, après les commandes d'entrée |
+| `ObtenirTacheAsync(id)` | au début de `CompleterTacheAsync` (tâche inconnue ou non ouverte → `SansEffet`) |
+| `ObtenirTachesOuvertesAsync(idInstance)` | annulation, reprise d'une instance en erreur, migration, suivi |
+| `CompleterTacheAsync(id, données, utilisateur)` | après la fusion des données et les commandes de sortie |
+| `AnnulerTacheAsync(id, motif)` | annulation de l'instance (et de ses enfants), migration avec reprise à un autre nœud |
+| `RenommerNoeudAsync(idInstance, ancien, nouveau)` | migration qui renomme le nœud interactif courant |
+
+```csharp
+public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
+{
+    public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
+        => depot.InsererAsync(demande.IdInstance, demande.CodeNoeud, demande.Nom, demande.Role, demande.Donnees, ct);
+
+    public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
+        => depot.ChangerStatutAsync(idTache, StatutTache.Completee, utilisateur, ct);
+
+    // ObtenirTacheAsync, ObtenirTachesOuvertesAsync, AnnulerTacheAsync, RenommerNoeudAsync…
+}
+```
+
+L'implémentation est choisie dans cet ordre : `o.UtiliserGestionnaireTaches<MesTaches>()` ; sinon un `IGestionnaireTaches` déjà enregistré par le client avant `AddSentier` ; sinon l'unique implémentation trouvée par balayage (les décorateurs, dont un constructeur reçoit un `IGestionnaireTaches`, sont ignorés). Le déploiement échoue si une définition contient un nœud interactif sans gestionnaire enregistré.
+
+Exigences sur l'implémentation :
+
+- **Même transaction** que Sentier si elle est en base (même session). Sinon, les cas ci-dessus restent cohérents, mais une tâche orpheline reste visible chez le client jusqu'à la sortie du nœud.
+- **Idempotence** de `CompleterTacheAsync` et `AnnulerTacheAsync` : elles peuvent être rappelées pour une tâche déjà complétée ou annulée.
+- `ObtenirTachesOuvertesAsync` est aussi appelée par `ISuiviSentier`, éventuellement sans transaction. Le client complète une tâche par `IServiceSentier.CompleterTacheAsync(idTache, données, utilisateur)` : les données sont fusionnées pour les seules variables déclarées, les commandes de sortie s'exécutent, puis Sentier demande au gestionnaire de marquer la tâche complétée.
+
+### Mise à jour d'une base existante
+
+Les bases créées avant ce changement ont une table `_TACHE` que Sentier ne lit plus. Le script `Scripts/mise-a-jour-gestionnaire-taches.sql` (Oracle et SQLite, préfixe `{{P}}` à remplacer) ajoute `ID_TACHE_COURANTE` à partir des tâches ouvertes, recrée la vue, liste les tâches ouvertes à reprendre dans le stockage du client (`ID_TACHE_EXTERNE` devient l'identifiant) et, en commentaire, supprime `_TACHE` une fois la reprise vérifiée. À exécuter application arrêtée, avant le déploiement.
 
 ## 7. Déploiement et migration
 
@@ -220,7 +259,7 @@ Points non tranchés par la spécification, résolus au plus simple :
 
 - **Cible .NET 10** (`net10.0`) à la place de .NET 8.
 - **Lectures sans transaction** : `ISuiviSentier` et `ObtenirEcheancesDuesAsync` acceptent l'absence de transaction (elles utilisent la transaction courante si elle existe). Les écritures l'exigent.
-- **Identifiant de tâche externe** : `long` (`NUMBER(19)`), comme toutes les colonnes `ID_*`.
+- **Identifiant de tâche** : `long`, attribué par le gestionnaire de tâches du client ; une instance attend au plus une tâche (`ID_TACHE_COURANTE`).
 - **Code de fin** : le code du nœud de fin atteint.
 - **Lien `Vers` sur un nœud à plusieurs sorties** : il désigne le point de convergence de ses branches.
 - **Signal par processus + clé d'affaire sans corrélation** : il atteint les attentes de ce signal quelle que soit leur clé de corrélation ; avec une corrélation, elle doit être égale.

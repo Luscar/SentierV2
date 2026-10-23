@@ -5,7 +5,8 @@ using Sentier.Migration;
 namespace Sentier.Commandes;
 
 /// <summary>
-/// Registre des commandes, requêtes, définitions et plans de migration découverts par balayage d'assemblys.
+/// Registre des commandes, requêtes, définitions, plans de migration et gestionnaires de tâches
+/// découverts par balayage d'assemblys.
 /// Enregistré en Singleton.
 /// </summary>
 public sealed class RegistreSentier
@@ -13,12 +14,13 @@ public sealed class RegistreSentier
     private readonly Dictionary<string, Type> _commandes;
     private readonly Dictionary<string, Type> _requetes;
 
-    private RegistreSentier(Dictionary<string, Type> commandes, Dictionary<string, Type> requetes, List<Type> definitions, List<Type> plans)
+    private RegistreSentier(Dictionary<string, Type> commandes, Dictionary<string, Type> requetes, List<Type> definitions, List<Type> plans, List<Type> gestionnairesTaches)
     {
         _commandes = commandes;
         _requetes = requetes;
         Definitions = definitions;
         PlansMigration = plans;
+        GestionnairesTaches = gestionnairesTaches;
     }
 
     /// <summary>Commandes enregistrées, par nom.</summary>
@@ -33,6 +35,12 @@ public sealed class RegistreSentier
     /// <summary>Classes de plans de migration (<see cref="IPlanMigration"/>).</summary>
     public IReadOnlyList<Type> PlansMigration { get; }
 
+    /// <summary>
+    /// Implémentations de <see cref="IGestionnaireTaches"/> trouvées, sans les décorateurs
+    /// (classes dont un constructeur reçoit un <see cref="IGestionnaireTaches"/>).
+    /// </summary>
+    public IReadOnlyList<Type> GestionnairesTaches { get; }
+
     /// <summary>Balaye les assemblys et construit le registre.</summary>
     /// <exception cref="SentierException">Deux commandes ou deux requêtes portent le même nom.</exception>
     public static RegistreSentier Balayer(IEnumerable<Assembly> assemblys)
@@ -41,6 +49,7 @@ public sealed class RegistreSentier
         var requetes = new Dictionary<string, Type>(StringComparer.Ordinal);
         var definitions = new List<Type>();
         var plans = new List<Type>();
+        var gestionnairesTaches = new List<Type>();
 
         foreach (var type in assemblys.Distinct().SelectMany(TypesConcrets))
         {
@@ -63,9 +72,14 @@ public sealed class RegistreSentier
             {
                 plans.Add(type);
             }
+
+            if (typeof(IGestionnaireTaches).IsAssignableFrom(type) && !EstDecorateur(type))
+            {
+                gestionnairesTaches.Add(type);
+            }
         }
 
-        return new RegistreSentier(commandes, requetes, definitions, plans);
+        return new RegistreSentier(commandes, requetes, definitions, plans, gestionnairesTaches);
     }
 
     /// <summary>Type de la commande de ce nom, ou <c>null</c>.</summary>
@@ -83,6 +97,9 @@ public sealed class RegistreSentier
 
         registre[nom] = type;
     }
+
+    private static bool EstDecorateur(Type type)
+        => type.GetConstructors().Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(IGestionnaireTaches)));
 
     private static IEnumerable<Type> TypesConcrets(Assembly assembly)
     {

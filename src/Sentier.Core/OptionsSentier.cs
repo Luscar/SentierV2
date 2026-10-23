@@ -9,7 +9,7 @@ public sealed partial class OptionsSentier
     /// <summary>Longueur maximale du préfixe, pour que tous les noms d'objets tiennent en 30 caractères.</summary>
     public const int LongueurMaxPrefixe = 12;
 
-    /// <summary>Préfixe des tables, vues et séquences (obligatoire, ex. <c>AT_PROC</c>).</summary>
+    /// <summary>Préfixe des tables, vues et séquences (obligatoire, ex. <c>SENTIER</c>).</summary>
     public string PrefixeTables { get; set; } = "";
 
     /// <summary>Nombre maximal d'étapes par exécution, protection contre les boucles infinies (1000 par défaut).</summary>
@@ -18,11 +18,14 @@ public sealed partial class OptionsSentier
     /// <summary>Dialecte SQL de la base.</summary>
     public DialecteBase Dialecte { get; set; } = DialecteBase.Oracle;
 
-    /// <summary>Assemblys balayés pour trouver commandes, requêtes, définitions et plans de migration.</summary>
+    /// <summary>Assemblys balayés pour trouver commandes, requêtes, définitions, plans de migration et gestionnaire de tâches.</summary>
     public List<Assembly> Assemblys { get; } = [];
 
-    /// <summary>Implémentation de <see cref="IBassinTaches"/> à enregistrer (Scoped), si fournie.</summary>
-    public Type? TypeBassinTaches { get; private set; }
+    /// <summary>
+    /// Implémentation de <see cref="IGestionnaireTaches"/> à enregistrer (Scoped). Si elle n'est pas fournie,
+    /// celle trouvée par balayage est utilisée.
+    /// </summary>
+    public Type? TypeGestionnaireTaches { get; private set; }
 
     /// <summary>Implémentation de <see cref="ISessionSentier"/> à enregistrer (Scoped) à la place de celle par défaut.</summary>
     public Type? TypeSession { get; private set; }
@@ -55,10 +58,10 @@ public sealed partial class OptionsSentier
     /// <summary>Ajoute l'assembly qui contient <typeparamref name="T"/>.</summary>
     public OptionsSentier BalayerAssemblyDe<T>() => Balayer(typeof(T).Assembly);
 
-    /// <summary>Enregistre l'implémentation du bassin de tâches du client.</summary>
-    public OptionsSentier UtiliserBassinTaches<T>() where T : class, IBassinTaches
+    /// <summary>Enregistre l'implémentation du gestionnaire de tâches du client, à la place de celle trouvée par balayage.</summary>
+    public OptionsSentier UtiliserGestionnaireTaches<T>() where T : class, IGestionnaireTaches
     {
-        TypeBassinTaches = typeof(T);
+        TypeGestionnaireTaches = typeof(T);
         return this;
     }
 
