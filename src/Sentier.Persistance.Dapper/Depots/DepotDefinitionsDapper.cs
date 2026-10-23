@@ -6,34 +6,34 @@ namespace Sentier.Persistance.Dapper.Depots;
 /// <summary>Dépôt Dapper des versions de définitions.</summary>
 internal sealed class DepotDefinitionsDapper(ContexteSql sql) : IDepotDefinitions
 {
-    private const string Colonnes = "ID, CLE_PROCESSUS, VERSION, NOM, INSTANCE_UNIQUE, MIGRATION_AUTO, CONTENU, EMPREINTE, EST_ACTIVE, DATE_CREATION";
+    private const string Colonnes = "NO_SEQ_DEFIN_PROCS, CLE, VERSI, NOM_DEFIN, IND_INSTC_UNIQ, IND_MIGRA_AUTO, DEFIN_JSON, EMPRE, IND_ACTIV, DH_CREA";
 
     private string Table => sql.Noms.Definition;
 
     public async Task<DefinitionStockee?> ObtenirDerniereAsync(string cleProcessus, CancellationToken ct)
     {
-        var requete = sql.Dialecte.Limiter($"SELECT {Colonnes} FROM {Table} WHERE CLE_PROCESSUS = @cle ORDER BY VERSION DESC", 1);
+        var requete = sql.Dialecte.Limiter($"SELECT {Colonnes} FROM {Table} WHERE CLE = @cle ORDER BY VERSI DESC", 1);
         var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture(requete, new { cle = cleProcessus }, ct));
         return ligne?.VersDomaine();
     }
 
     public async Task<IdDefinition?> ObtenirIdActifAsync(string cleProcessus, CancellationToken ct)
     {
-        var requete = sql.Dialecte.Limiter($"SELECT ID FROM {Table} WHERE CLE_PROCESSUS = @cle AND EST_ACTIVE = 1 ORDER BY VERSION DESC", 1);
+        var requete = sql.Dialecte.Limiter($"SELECT NO_SEQ_DEFIN_PROCS FROM {Table} WHERE CLE = @cle AND IND_ACTIV = 1 ORDER BY VERSI DESC", 1);
         var id = await sql.Connexion.ExecuteScalarAsync<long?>(sql.Lecture(requete, new { cle = cleProcessus }, ct));
         return id is null ? null : new IdDefinition(id.Value);
     }
 
     public async Task<DefinitionStockee?> ObtenirAsync(IdDefinition id, CancellationToken ct)
     {
-        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE ID = @id", new { id = id.Valeur }, ct));
+        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_DEFIN_PROCS = @id", new { id = id.Valeur }, ct));
         return ligne?.VersDomaine();
     }
 
     public async Task<DefinitionStockee?> ObtenirParVersionAsync(string cleProcessus, int version, CancellationToken ct)
     {
         var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(
-            sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE CLE_PROCESSUS = @cle AND VERSION = @version", new { cle = cleProcessus, version }, ct));
+            sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE CLE = @cle AND VERSI = @version", new { cle = cleProcessus, version }, ct));
         return ligne?.VersDomaine();
     }
 
@@ -41,7 +41,7 @@ internal sealed class DepotDefinitionsDapper(ContexteSql sql) : IDepotDefinition
     {
         definition.Id = new IdDefinition(await sql.ProchainIdAsync(sql.Noms.SeqDefinition, ct));
         await sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET EST_ACTIVE = 0 WHERE CLE_PROCESSUS = @cle AND EST_ACTIVE = 1",
+            $"UPDATE {Table} SET IND_ACTIV = 0 WHERE CLE = @cle AND IND_ACTIV = 1",
             new { cle = definition.CleProcessus }, ct));
         await sql.Connexion.ExecuteAsync(sql.Ecriture(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @cle, @version, @nom, @instanceUnique, @migrationAuto, @contenu, @empreinte, @estActive, @dateCreation)",
@@ -63,38 +63,38 @@ internal sealed class DepotDefinitionsDapper(ContexteSql sql) : IDepotDefinition
 
     private sealed class Ligne
     {
-        public long ID { get; set; }
+        public long NO_SEQ_DEFIN_PROCS { get; set; }
 
-        public string CLE_PROCESSUS { get; set; } = "";
+        public string CLE { get; set; } = "";
 
-        public int VERSION { get; set; }
+        public int VERSI { get; set; }
 
-        public string NOM { get; set; } = "";
+        public string NOM_DEFIN { get; set; } = "";
 
-        public int INSTANCE_UNIQUE { get; set; }
+        public int IND_INSTC_UNIQ { get; set; }
 
-        public int MIGRATION_AUTO { get; set; }
+        public int IND_MIGRA_AUTO { get; set; }
 
-        public string CONTENU { get; set; } = "";
+        public string DEFIN_JSON { get; set; } = "";
 
-        public string EMPREINTE { get; set; } = "";
+        public string EMPRE { get; set; } = "";
 
-        public int EST_ACTIVE { get; set; }
+        public int IND_ACTIV { get; set; }
 
-        public DateTime DATE_CREATION { get; set; }
+        public DateTime DH_CREA { get; set; }
 
         public DefinitionStockee VersDomaine() => new()
         {
-            Id = new IdDefinition(ID),
-            CleProcessus = CLE_PROCESSUS,
-            Version = VERSION,
-            Nom = NOM,
-            InstanceUnique = INSTANCE_UNIQUE != 0,
-            MigrationAuto = MIGRATION_AUTO != 0,
-            Contenu = CONTENU,
-            Empreinte = EMPREINTE,
-            EstActive = EST_ACTIVE != 0,
-            DateCreation = Utc(DATE_CREATION),
+            Id = new IdDefinition(NO_SEQ_DEFIN_PROCS),
+            CleProcessus = CLE,
+            Version = VERSI,
+            Nom = NOM_DEFIN,
+            InstanceUnique = IND_INSTC_UNIQ != 0,
+            MigrationAuto = IND_MIGRA_AUTO != 0,
+            Contenu = DEFIN_JSON,
+            Empreinte = EMPRE,
+            EstActive = IND_ACTIV != 0,
+            DateCreation = Utc(DH_CREA),
         };
     }
 }

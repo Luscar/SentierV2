@@ -6,7 +6,7 @@ namespace Sentier.Persistance.Dapper.Depots;
 /// <summary>Dépôt Dapper de l'historique des passages.</summary>
 internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique
 {
-    private const string Colonnes = "ID, ID_INSTANCE, CODE_NOEUD, TYPE_NOEUD, DATE_ENTREE, DATE_SORTIE, RESULTAT";
+    private const string Colonnes = "NO_SEQ_HIST_NOEUD_PROCS, NO_SEQ_INSTC_PROCS, ID_NOEUD, TYP_NOEUD, DH_ENTRE, DH_SORTI, RESUL";
 
     private string Table => sql.Noms.HistNoeud;
 
@@ -30,42 +30,42 @@ internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique
 
     public Task FermerPassagesOuvertsAsync(IdInstance idInstance, DateTime dateSortie, string? resultat, CancellationToken ct)
         => sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET DATE_SORTIE = @dateSortie, RESULTAT = @resultat WHERE ID_INSTANCE = @id AND DATE_SORTIE IS NULL",
+            $"UPDATE {Table} SET DH_SORTI = @dateSortie, RESUL = @resultat WHERE NO_SEQ_INSTC_PROCS = @id AND DH_SORTI IS NULL",
             new { id = idInstance.Valeur, dateSortie, resultat },
             ct));
 
     public async Task<IReadOnlyList<PassageNoeud>> ObtenirAsync(IdInstance idInstance, CancellationToken ct)
     {
         var lignes = await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(
-            $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTANCE = @id ORDER BY ID",
+            $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id ORDER BY NO_SEQ_HIST_NOEUD_PROCS",
             new { id = idInstance.Valeur },
             ct));
         return lignes.Select(l => new PassageNoeud
         {
-            Id = new IdPassageNoeud(l.ID),
-            IdInstance = new IdInstance(l.ID_INSTANCE),
-            CodeNoeud = l.CODE_NOEUD,
-            TypeNoeud = CodesBase.LireTypeNoeud(l.TYPE_NOEUD),
-            DateEntree = Utc(l.DATE_ENTREE),
-            DateSortie = Utc(l.DATE_SORTIE),
-            Resultat = l.RESULTAT,
+            Id = new IdPassageNoeud(l.NO_SEQ_HIST_NOEUD_PROCS),
+            IdInstance = new IdInstance(l.NO_SEQ_INSTC_PROCS),
+            CodeNoeud = l.ID_NOEUD,
+            TypeNoeud = CodesBase.LireTypeNoeud(l.TYP_NOEUD),
+            DateEntree = Utc(l.DH_ENTRE),
+            DateSortie = Utc(l.DH_SORTI),
+            Resultat = l.RESUL,
         }).ToList();
     }
 
     private sealed class Ligne
     {
-        public long ID { get; set; }
+        public long NO_SEQ_HIST_NOEUD_PROCS { get; set; }
 
-        public long ID_INSTANCE { get; set; }
+        public long NO_SEQ_INSTC_PROCS { get; set; }
 
-        public string CODE_NOEUD { get; set; } = "";
+        public string ID_NOEUD { get; set; } = "";
 
-        public string TYPE_NOEUD { get; set; } = "";
+        public string TYP_NOEUD { get; set; } = "";
 
-        public DateTime DATE_ENTREE { get; set; }
+        public DateTime DH_ENTRE { get; set; }
 
-        public DateTime? DATE_SORTIE { get; set; }
+        public DateTime? DH_SORTI { get; set; }
 
-        public string? RESULTAT { get; set; }
+        public string? RESUL { get; set; }
     }
 }

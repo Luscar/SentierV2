@@ -4,6 +4,8 @@ Moteur de processus (BPM) léger, distribué en packages NuGet pour .NET 10.
 
 Pour une première intégration, suivre le [guide de démarrage](docs/demarrage.md).
 
+Les noms des objets de base suivent les mnémoniques de BpmPlus ; voir [docs/mnemoniques.md](docs/mnemoniques.md).
+
 - **Exécution synchrone en chaîne** : les nœuds s'enchaînent jusqu'à une fin ou un nœud suspensif (attente, tâche, sous-processus).
 - **Une seule transaction, celle du client** : Sentier n'ouvre, ne valide et n'annule jamais de transaction.
 - **Une instance = un processus + une clé d'affaire** (`long`).
@@ -236,7 +238,7 @@ public sealed class PlanCongeV3 : IPlanMigration
 }
 ```
 
-Déroulement : `CompterInstancesActivesAsync` → `SimulerMigrationAsync` (rapport par instance, rien n'est écrit) → `MigrerAsync`, par lots, une transaction par lot. Aucune commande d'entrée n'est réexécutée ; chaque migration est tracée dans `_MIGRATION`.
+Déroulement : `CompterInstancesActivesAsync` → `SimulerMigrationAsync` (rapport par instance, rien n'est écrit) → `MigrerAsync`, par lots, une transaction par lot. Aucune commande d'entrée n'est réexécutée ; chaque migration est tracée dans `_MIGRA_PROCS`.
 
 ## 8. Batch externe des échéances
 

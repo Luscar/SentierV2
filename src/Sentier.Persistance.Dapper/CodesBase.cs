@@ -31,7 +31,7 @@ public static class CodesBase
         _ => throw new SentierException($"Statut d'instance inconnu en base : '{code}'."),
     };
 
-    /// <summary>Code d'un type de nœud (<c>TYPE_NOEUD</c>).</summary>
+    /// <summary>Code d'un type de nœud (<c>TYP_NOEUD</c>).</summary>
     public static string Code(TypeNoeud type) => type switch
     {
         TypeNoeud.Debut => "DEBUT",
