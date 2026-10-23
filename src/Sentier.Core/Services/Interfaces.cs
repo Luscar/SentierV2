@@ -12,8 +12,9 @@ public interface IServiceSentier
     /// <summary>
     /// Démarre une instance de la dernière version active du processus, sur une clé d'affaire.
     /// Si le processus est à instance unique et déjà actif pour cette clé, retourne <c>SansEffet</c> avec l'instance existante.
+    /// <paramref name="utilisateur"/> est l'auteur pour l'audit ; par défaut, celui de <see cref="IContexteUtilisateur"/>.
     /// </summary>
-    Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, CancellationToken ct = default);
+    Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, string? utilisateur = null, CancellationToken ct = default);
 
     /// <summary>
     /// Complète une tâche utilisateur à partir de son identifiant chez le client, puis reprend l'instance

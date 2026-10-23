@@ -17,7 +17,7 @@ internal sealed class ServiceSentier(
     ServiceMigration migration,
     IHorloge horloge) : IServiceSentier
 {
-    public async Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, CancellationToken ct = default)
+    public async Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, string? utilisateur = null, CancellationToken ct = default)
     {
         session.ExigerTransaction();
         var definition = await definitions.ObtenirActiveAsync(cleProcessus, ct)
@@ -33,7 +33,7 @@ internal sealed class ServiceSentier(
         }
 
         var valeurs = VariablesProcessus.Initialiser(definition.Declarations, variables);
-        var execution = await moteur.DemarrerAsync(definition, cleAffaire, valeurs, null, null, moteur.UtilisateurCourant, ct);
+        var execution = await moteur.DemarrerAsync(definition, cleAffaire, valeurs, null, null, utilisateur ?? moteur.UtilisateurCourant, ct);
         return ResultatExecution.Depuis(execution.Instance);
     }
 
