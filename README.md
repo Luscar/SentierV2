@@ -2,6 +2,8 @@
 
 Moteur de processus (BPM) léger, distribué en packages NuGet pour .NET 10.
 
+Pour une première intégration, suivre le [guide de démarrage](docs/demarrage.md).
+
 - **Exécution synchrone en chaîne** : les nœuds s'enchaînent jusqu'à une fin ou un nœud suspensif (attente, tâche, sous-processus).
 - **Une seule transaction, celle du client** : Sentier n'ouvre, ne valide et n'annule jamais de transaction.
 - **Une instance = un processus + une clé d'affaire** (`long`).
