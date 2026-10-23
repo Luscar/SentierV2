@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Sentier.Commandes;
 using Sentier.Variables;
 
@@ -49,12 +50,15 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
         return new ConstructeurProcessus(cleProcessus, nom ?? cleProcessus, new EtatConstruction());
     }
 
-    /// <summary>Déclare les variables du processus (à écrire en premier).</summary>
+    /// <summary>
+    /// Déclare les variables du processus (à écrire en premier). Inutile avec <see cref="DefinitionSentier"/>,
+    /// qui déclare les champs statiques de la classe. Redéclarer une variable identique est sans effet.
+    /// </summary>
     public ConstructeurProcessus Variables(params IVariable[] variables)
     {
         foreach (var variable in variables)
         {
-            _variables.Add(variable.VersDeclaration());
+            Declarer(variable.VersDeclaration());
         }
 
         return this;
@@ -63,7 +67,7 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
     /// <summary>Déclare une variable sans constante typée.</summary>
     public ConstructeurProcessus Variable(string nom, TypeVariable type, bool obligatoire = false, object? defaut = null)
     {
-        _variables.Add(new DeclarationVariable
+        Declarer(new DeclarationVariable
         {
             Nom = nom,
             Type = type,
@@ -140,6 +144,19 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
         }
 
         return definition;
+    }
+
+    private void Declarer(DeclarationVariable declaration)
+    {
+        var existante = _variables.FirstOrDefault(v => v.Nom == declaration.Nom);
+        if (existante is null)
+        {
+            _variables.Add(declaration);
+        }
+        else if (JsonSerializer.Serialize(existante, SerialisationDefinition.Options) != JsonSerializer.Serialize(declaration, SerialisationDefinition.Options))
+        {
+            Etat.Erreurs.Add($"La variable '{declaration.Nom}' est déclarée plusieurs fois, de façons différentes.");
+        }
     }
 
     /// <summary>
@@ -292,6 +309,14 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
         branches(constructeur);
         return Ajouter(new NoeudDecision { Code = code }, constructeur.Branches, constructeur.Erreurs);
     }
+
+    /// <summary>Nœud sous-processus défini par la classe <typeparamref name="TDefinition"/>, sur la clé d'affaire du parent ; à sa fin, mène au nœud suivant.</summary>
+    public TSelf SousProcessus<TDefinition>(string code) where TDefinition : DefinitionSentier
+        => SousProcessus(code, NomsSentier.CleProcessus(typeof(TDefinition)));
+
+    /// <summary>Nœud sous-processus défini par la classe <typeparamref name="TDefinition"/>, avec sa configuration.</summary>
+    public TSelf SousProcessus<TDefinition>(string code, Action<ConstructeurSousProcessus> configuration) where TDefinition : DefinitionSentier
+        => SousProcessus(code, NomsSentier.CleProcessus(typeof(TDefinition)), configuration);
 
     /// <summary>Nœud sous-processus : démarre une instance enfant sur la clé d'affaire du parent ; à sa fin, mène au nœud suivant.</summary>
     public TSelf SousProcessus(string code, string cleProcessus) => SousProcessus(code, cleProcessus, _ => { });

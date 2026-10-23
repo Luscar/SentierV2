@@ -56,19 +56,17 @@ Les actions qui écrivent lèvent `TransactionRequiseException` sans transaction
 
 ## 3. Écrire un processus
 
-Une classe par processus. Les variables sont déclarées une fois, en constantes typées, puis le déroulement se lit de haut en bas. Enchaîner deux nœuds crée la transition ; le nœud de début est implicite.
-
-Chaque méthode a une forme courte pour le cas courant ; on n'écrit une option que pour s'écarter du défaut. Les options passent par un bloc (`p => …`, `i => …`), jamais par une liste de paramètres. Une branche se déclare, puis sa destination s'écrit juste après : `.Alors(b => …)` pour un bloc **imbriqué**, `.Vers("code")` pour un lien **à plat**, rien pour aller au nœud suivant. `Sinon`, `SiFin` et `SiAnnule`, qui n'ont pas d'options, acceptent aussi la destination en argument : `.Sinon("refusee")`, `.Sinon(b => b.Fin("refusee"))`.
+Une classe par processus, dérivée de `DefinitionSentier` : la clé vient de l'attribut, les champs `Variable<T>` statiques sont déclarés automatiquement, le début est implicite, et le déroulement se lit de haut en bas. Enchaîner deux nœuds crée la transition ; une branche se déclare puis sa destination s'écrit juste après : `.Alors(b => …)` (imbriqué), `.Vers("code")` (à plat), rien (nœud suivant).
 
 ```csharp
-public sealed class DemandeConge : IDefinitionSentier
+[ProcessusSentier("demande-conge", Nom = "Demande de congé")]
+public sealed class DemandeConge : DefinitionSentier
 {
     public static readonly Variable<long> NbJours = Variable.Entier("nbJours").Obligatoire();
     public static readonly Variable<long> Solde = Variable.Entier("solde").ParDefaut(0);
     public static readonly Variable<string> Decision = Variable.Texte("decision");
 
-    public DefinitionProcessus Definir() => ConstructeurProcessus.Nouveau("demande-conge", "Demande de congé")
-        .Variables(NbJours, Solde, Decision)
+    protected override void Definir(ConstructeurProcessus processus) => processus
         .Systemique<CalculerSolde>("calculer-solde", p => p.CleAffaire("employe"))
         .Decision("solde-suffisant", d => d
             .Si<SoldeSuffisant>(p => p.Variables(NbJours, Solde))      // sortie « SoldeSuffisant » : nœud suivant
@@ -84,25 +82,13 @@ public sealed class DemandeConge : IDefinitionSentier
             .Signal("VALIDATION_RH")
             .Echeance(TimeSpan.FromDays(2)).Alors(b => b
                 .Systemique<Relancer>("relancer").Vers("attendre-rh")))  // boucle
-        .SousProcessus("archivage", "archivage")
+        .SousProcessus<Archivage>("archivage")
         .Fin("approuvee")
-        .Fin("refusee-gestionnaire")
-        .Construire();
+        .Fin("refusee-gestionnaire");
 }
 ```
 
-Règles de sortie d'un nœud, dans l'ordre : lien explicite ; sinon le nœud suivant du même bloc ; sinon, en fin de bloc imbriqué, le nœud qui suit le nœud à plusieurs sorties. Un nœud placé après une fin ou un lien n'est relié que par un lien ou une branche. Raccourcis : `AttendreDelai(code, durée)` et `AttendreSignal(code, nom)`.
-
-| Défaut | Pour s'en écarter |
-|---|---|
-| Début implicite, code `debut` | `.Debut("autre-code")` en premier |
-| Nom de la tâche = code du nœud | `.Interactif(code, "Nom de la tâche")` |
-| Sortie d'une branche = nom de la requête (`non-…` pour `SiPas`), `sinon`, `echeance` ou nom du signal | `.Nommee("oui")` après la branche |
-| Charge utile du signal fusionnée, sans corrélation | `.Signal(nom, s => s.Correlation(Variable).SansFusion())` |
-| Sous-processus sur la clé d'affaire du parent, fins vers le nœud suivant | `s => s.CleAffaire(Variable).SiFin("refuse", "…")` |
-| Paramètre nommé comme sa variable | `p.Variable("autre-nom", Variable)` |
-
-Les codes de nœuds, eux, restent toujours explicites : ils sont le contrat avec les instances en cours.
+Le guide complet du constructeur (nœuds, branches, paramètres, tableau des défauts, aide-mémoire) est dans [docs/constructeur.md](docs/constructeur.md).
 
 `Construire()` valide la définition (codes uniques, un début, au moins une fin, liens existants, nœuds atteignables, décision avec branche conditionnelle et « sinon », attente avec au moins un déclencheur et au plus une échéance, variables référencées déclarées et typées) et lève `DefinitionInvalideException` avec la liste des erreurs.
 
