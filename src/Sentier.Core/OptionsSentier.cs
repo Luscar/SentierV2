@@ -44,6 +44,20 @@ public sealed partial class OptionsSentier
         return this;
     }
 
+    /// <summary>Utilise le dialecte Oracle avec le préfixe de tables <paramref name="prefixeTables"/>.</summary>
+    public OptionsSentier UtiliserOracle(string prefixeTables)
+    {
+        PrefixeTables = prefixeTables;
+        return UtiliserOracle();
+    }
+
+    /// <summary>Utilise le dialecte SQLite avec le préfixe de tables <paramref name="prefixeTables"/>.</summary>
+    public OptionsSentier UtiliserSqlite(string prefixeTables)
+    {
+        PrefixeTables = prefixeTables;
+        return UtiliserSqlite();
+    }
+
     /// <summary>Ajoute un assembly à balayer.</summary>
     public OptionsSentier Balayer(Assembly assembly)
     {
