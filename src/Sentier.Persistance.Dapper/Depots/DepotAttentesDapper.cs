@@ -6,7 +6,7 @@ namespace Sentier.Persistance.Dapper.Depots;
 /// <summary>Dépôt Dapper des attentes (une ligne par déclencheur).</summary>
 internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
 {
-    private const string Colonnes = "ID, ID_INSTANCE, CODE_NOEUD, TYPE_DECLENCHEUR, NOM_SORTIE, DATE_ECHEANCE, NOM_SIGNAL, CLE_CORRELATION, DATE_CREATION";
+    private const string Colonnes = "NO_SEQ_ATTEN_PROCS, NO_SEQ_INSTC_PROCS, ID_NOEUD, TYP_DECLN, NOM_SORTI, DH_ECHEA, NOM_SIGNL, CLE_CORRL, DH_CREA";
 
     private string Table => sql.Noms.Attente;
 
@@ -31,61 +31,61 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
     }
 
     public Task<IReadOnlyList<Attente>> ObtenirParInstanceAsync(IdInstance idInstance, CancellationToken ct)
-        => ListerAsync($"SELECT {Colonnes} FROM {Table} WHERE ID_INSTANCE = @id ORDER BY ID", new { id = idInstance.Valeur }, ct);
+        => ListerAsync($"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id ORDER BY NO_SEQ_ATTEN_PROCS", new { id = idInstance.Valeur }, ct);
 
     public async Task<Attente?> VerrouillerAsync(IdAttente id, CancellationToken ct)
     {
-        var requete = $"SELECT {Colonnes} FROM {Table} WHERE ID = @id{sql.Dialecte.VerrouillageSansAttente}";
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_ATTEN_PROCS = @id{sql.Dialecte.VerrouillageSansAttente}";
         var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Ecriture(requete, new { id = id.Valeur }, ct));
         return ligne?.VersDomaine();
     }
 
     public Task<int> SupprimerParNoeudAsync(IdInstance idInstance, string codeNoeud, CancellationToken ct)
         => sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"DELETE FROM {Table} WHERE ID_INSTANCE = @id AND CODE_NOEUD = @code",
+            $"DELETE FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id AND ID_NOEUD = @code",
             new { id = idInstance.Valeur, code = codeNoeud },
             ct));
 
     public Task<int> SupprimerParInstanceAsync(IdInstance idInstance, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture($"DELETE FROM {Table} WHERE ID_INSTANCE = @id", new { id = idInstance.Valeur }, ct));
+        => sql.Connexion.ExecuteAsync(sql.Ecriture($"DELETE FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = idInstance.Valeur }, ct));
 
     public async Task<IReadOnlyList<EcheanceDue>> ObtenirEcheancesDuesAsync(DateTime maintenant, int tailleMax, CancellationToken ct)
     {
         var requete = sql.Dialecte.Limiter(
-            $"SELECT a.ID AS ID_ATTENTE, a.ID_INSTANCE AS ID_INSTANCE, i.CLE_PROCESSUS AS CLE_PROCESSUS, i.CLE_AFFAIRE AS CLE_AFFAIRE, a.DATE_ECHEANCE AS DATE_ECHEANCE " +
-            $"FROM {Table} a JOIN {sql.Noms.Instance} i ON i.ID = a.ID_INSTANCE " +
-            "WHERE a.TYPE_DECLENCHEUR = 'ECHEANCE' AND a.DATE_ECHEANCE <= @maintenant AND i.STATUT = 'SUSPENDUE' " +
-            "ORDER BY a.DATE_ECHEANCE, a.ID",
+            $"SELECT a.NO_SEQ_ATTEN_PROCS AS ID_ATTENTE, a.NO_SEQ_INSTC_PROCS AS NO_SEQ_INSTC_PROCS, i.CLE_DEFIN AS CLE_DEFIN, i.AGGRE_ID AS AGGRE_ID, a.DH_ECHEA AS DH_ECHEA " +
+            $"FROM {Table} a JOIN {sql.Noms.Instance} i ON i.NO_SEQ_INSTC_PROCS = a.NO_SEQ_INSTC_PROCS " +
+            "WHERE a.TYP_DECLN = 'ECHEANCE' AND a.DH_ECHEA <= @maintenant AND i.STAT = 'SUSPENDUE' " +
+            "ORDER BY a.DH_ECHEA, a.NO_SEQ_ATTEN_PROCS",
             tailleMax);
         var lignes = await sql.Connexion.QueryAsync<LigneEcheance>(sql.Lecture(requete, new { maintenant }, ct));
-        return lignes.Select(l => new EcheanceDue(new IdAttente(l.ID_ATTENTE), new IdInstance(l.ID_INSTANCE), l.CLE_PROCESSUS, l.CLE_AFFAIRE, Utc(l.DATE_ECHEANCE))).ToList();
+        return lignes.Select(l => new EcheanceDue(new IdAttente(l.ID_ATTENTE), new IdInstance(l.NO_SEQ_INSTC_PROCS), l.CLE_DEFIN, l.AGGRE_ID, Utc(l.DH_ECHEA))).ToList();
     }
 
     public Task<IReadOnlyList<Attente>> RechercherSignalAsync(Signal signal, CancellationToken ct)
     {
         var colonnes = string.Join(", ", Colonnes.Split(", ").Select(c => "a." + c));
         var requete =
-            $"SELECT {colonnes} FROM {Table} a JOIN {sql.Noms.Instance} i ON i.ID = a.ID_INSTANCE " +
-            $"WHERE a.TYPE_DECLENCHEUR = 'SIGNAL' AND a.NOM_SIGNAL = @nom AND i.STATUT IN {CodesBase.StatutsAuRepos} AND i.CODE_NOEUD_COURANT = a.CODE_NOEUD";
+            $"SELECT {colonnes} FROM {Table} a JOIN {sql.Noms.Instance} i ON i.NO_SEQ_INSTC_PROCS = a.NO_SEQ_INSTC_PROCS " +
+            $"WHERE a.TYP_DECLN = 'SIGNAL' AND a.NOM_SIGNL = @nom AND i.STAT IN {CodesBase.StatutsAuRepos} AND i.ID_NOEUD_COUR = a.ID_NOEUD";
         if (signal.CleProcessus is not null)
         {
-            requete += " AND i.CLE_PROCESSUS = @cleProcessus AND i.CLE_AFFAIRE = @cleAffaire";
+            requete += " AND i.CLE_DEFIN = @cleProcessus AND i.AGGRE_ID = @cleAffaire";
         }
 
         if (signal.CleCorrelation is not null)
         {
-            requete += " AND a.CLE_CORRELATION = @cleCorrelation";
+            requete += " AND a.CLE_CORRL = @cleCorrelation";
         }
 
         return ListerAsync(
-            requete + " ORDER BY a.ID",
+            requete + " ORDER BY a.NO_SEQ_ATTEN_PROCS",
             new { nom = signal.Nom, cleProcessus = signal.CleProcessus, cleAffaire = signal.CleAffaire, cleCorrelation = signal.CleCorrelation },
             ct);
     }
 
     public Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct)
         => sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET CODE_NOEUD = @nouveau WHERE ID_INSTANCE = @id AND CODE_NOEUD = @ancien",
+            $"UPDATE {Table} SET ID_NOEUD = @nouveau WHERE NO_SEQ_INSTC_PROCS = @id AND ID_NOEUD = @ancien",
             new { id = idInstance.Valeur, ancien = ancienCode, nouveau = nouveauCode },
             ct));
 
@@ -96,46 +96,46 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
     {
         public long ID_ATTENTE { get; set; }
 
-        public long ID_INSTANCE { get; set; }
+        public long NO_SEQ_INSTC_PROCS { get; set; }
 
-        public string CLE_PROCESSUS { get; set; } = "";
+        public string CLE_DEFIN { get; set; } = "";
 
-        public long CLE_AFFAIRE { get; set; }
+        public long AGGRE_ID { get; set; }
 
-        public DateTime DATE_ECHEANCE { get; set; }
+        public DateTime DH_ECHEA { get; set; }
     }
 
     private sealed class Ligne
     {
-        public long ID { get; set; }
+        public long NO_SEQ_ATTEN_PROCS { get; set; }
 
-        public long ID_INSTANCE { get; set; }
+        public long NO_SEQ_INSTC_PROCS { get; set; }
 
-        public string CODE_NOEUD { get; set; } = "";
+        public string ID_NOEUD { get; set; } = "";
 
-        public string TYPE_DECLENCHEUR { get; set; } = "";
+        public string TYP_DECLN { get; set; } = "";
 
-        public string NOM_SORTIE { get; set; } = "";
+        public string NOM_SORTI { get; set; } = "";
 
-        public DateTime? DATE_ECHEANCE { get; set; }
+        public DateTime? DH_ECHEA { get; set; }
 
-        public string? NOM_SIGNAL { get; set; }
+        public string? NOM_SIGNL { get; set; }
 
-        public string? CLE_CORRELATION { get; set; }
+        public string? CLE_CORRL { get; set; }
 
-        public DateTime DATE_CREATION { get; set; }
+        public DateTime DH_CREA { get; set; }
 
         public Attente VersDomaine() => new()
         {
-            Id = new IdAttente(ID),
-            IdInstance = new IdInstance(ID_INSTANCE),
-            CodeNoeud = CODE_NOEUD,
-            TypeDeclencheur = CodesBase.LireTypeDeclencheur(TYPE_DECLENCHEUR),
-            NomSortie = NOM_SORTIE,
-            DateEcheance = Utc(DATE_ECHEANCE),
-            NomSignal = NOM_SIGNAL,
-            CleCorrelation = CLE_CORRELATION,
-            DateCreation = Utc(DATE_CREATION),
+            Id = new IdAttente(NO_SEQ_ATTEN_PROCS),
+            IdInstance = new IdInstance(NO_SEQ_INSTC_PROCS),
+            CodeNoeud = ID_NOEUD,
+            TypeDeclencheur = CodesBase.LireTypeDeclencheur(TYP_DECLN),
+            NomSortie = NOM_SORTI,
+            DateEcheance = Utc(DH_ECHEA),
+            NomSignal = NOM_SIGNL,
+            CleCorrelation = CLE_CORRL,
+            DateCreation = Utc(DH_CREA),
         };
     }
 }

@@ -39,7 +39,7 @@ Le fournisseur Oracle (ODP.NET) est celui que l'application utilise déjà : Sen
 
 ## 3. Créer les tables
 
-Choisir un **préfixe** (lettres, chiffres, `_`, 12 caractères au plus) : toutes les tables, vues et séquences le portent (`SENTIER_INSTANCE`…).
+Choisir un **préfixe** (lettres, chiffres, `_`, 12 caractères au plus) : toutes les tables, vues et séquences le portent (`SENTIER_INSTC_PROCS`…).
 
 - **Oracle** : remettre au DBA le script `src/Sentier.Persistance.Oracle/Scripts/oracle.sql` en remplaçant `{{P}}` par le préfixe, ou le générer avec le bon préfixe :
 

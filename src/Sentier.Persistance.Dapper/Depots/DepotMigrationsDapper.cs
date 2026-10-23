@@ -9,7 +9,7 @@ internal sealed class DepotMigrationsDapper(ContexteSql sql) : IDepotMigrations
     {
         trace.Id = new IdMigration(await sql.ProchainIdAsync(sql.Noms.SeqMigration, ct));
         await sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"INSERT INTO {sql.Noms.Migration} (ID, ID_INSTANCE, ID_DEFINITION_SOURCE, ID_DEFINITION_CIBLE, MODE, DETAIL, UTILISATEUR, DATE_MIGRATION) " +
+            $"INSERT INTO {sql.Noms.Migration} (NO_SEQ_MIGRA_PROCS, NO_SEQ_INSTC_PROCS, NO_SEQ_DEFIN_SOURC, NO_SEQ_DEFIN_CIBLE, MODE_MIGRA, DETL, LOGON_UTIL, DH_MIGRA) " +
             "VALUES (@id, @idInstance, @source, @cible, @mode, @detail, @utilisateur, @dateMigration)",
             new
             {

@@ -3,18 +3,18 @@ using static Sentier.Persistance.Dapper.ContexteSql;
 
 namespace Sentier.Persistance.Dapper.Depots;
 
-/// <summary>Dépôt Dapper des instances, avec verrou optimiste sur la colonne VERSION.</summary>
+/// <summary>Dépôt Dapper des instances, avec verrou optimiste sur la colonne VERSI.</summary>
 internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 {
     private const string Colonnes =
-        "ID, ID_DEFINITION, CLE_PROCESSUS, ID_INSTANCE_PARENT, CODE_NOEUD_PARENT, CLE_AFFAIRE, INSTANCE_UNIQUE, STATUT, CODE_FIN, " +
-        "CODE_NOEUD_COURANT, ID_TACHE_COURANTE, VARIABLES, MESSAGE_ERREUR, DATE_ERREUR, VERSION, DATE_CREATION, DATE_MAJ, DATE_FIN";
+        "NO_SEQ_INSTC_PROCS, NO_SEQ_DEFIN_PROCS, CLE_DEFIN, ID_INSTC_PARN, ID_NOEUD_PARN, AGGRE_ID, IND_INSTC_UNIQ, STAT, ID_NOEUD_FIN, " +
+        "ID_NOEUD_COUR, ID_TACH_EXTE, VAR_JSON, MESS_ERR, DH_ERR, VERSI, DH_CREA, DH_MODIF, DH_FIN";
 
     private string Table => sql.Noms.Instance;
 
     public async Task<InstanceProcessus?> ObtenirAsync(IdInstance id, CancellationToken ct)
     {
-        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE ID = @id", new { id = id.Valeur }, ct));
+        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = id.Valeur }, ct));
         return ligne?.VersDomaine();
     }
 
@@ -51,9 +51,9 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
     public async Task MettreAJourAsync(InstanceProcessus instance, CancellationToken ct)
     {
         var lignes = await sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET ID_DEFINITION = @idDefinition, STATUT = @statut, CODE_FIN = @codeFin, CODE_NOEUD_COURANT = @codeNoeudCourant, ID_TACHE_COURANTE = @idTacheCourante, " +
-            "VARIABLES = @variables, MESSAGE_ERREUR = @messageErreur, DATE_ERREUR = @dateErreur, DATE_MAJ = @dateMaj, DATE_FIN = @dateFin, " +
-            "VERSION = VERSION + 1 WHERE ID = @id AND VERSION = @version",
+            $"UPDATE {Table} SET NO_SEQ_DEFIN_PROCS = @idDefinition, STAT = @statut, ID_NOEUD_FIN = @codeFin, ID_NOEUD_COUR = @codeNoeudCourant, ID_TACH_EXTE = @idTacheCourante, " +
+            "VAR_JSON = @variables, MESS_ERR = @messageErreur, DH_ERR = @dateErreur, DH_MODIF = @dateMaj, DH_FIN = @dateFin, " +
+            "VERSI = VERSI + 1 WHERE NO_SEQ_INSTC_PROCS = @id AND VERSI = @version",
             new
             {
                 id = instance.Id.Valeur,
@@ -81,62 +81,62 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirActivesAsync(string cleProcessus, long cleAffaire, CancellationToken ct)
         => ListerAsync(
-            $"SELECT {Colonnes} FROM {Table} WHERE CLE_PROCESSUS = @cle AND CLE_AFFAIRE = @cleAffaire AND STATUT IN {CodesBase.StatutsActifs} ORDER BY ID",
+            $"SELECT {Colonnes} FROM {Table} WHERE CLE_DEFIN = @cle AND AGGRE_ID = @cleAffaire AND STAT IN {CodesBase.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
             new { cle = cleProcessus, cleAffaire },
             ct);
 
     public Task<IReadOnlyList<InstanceProcessus>> RechercherAsync(long cleAffaire, IReadOnlyCollection<string> clesProcessus, IReadOnlyCollection<StatutInstance>? statuts, CancellationToken ct)
     {
-        var requete = $"SELECT {Colonnes} FROM {Table} WHERE CLE_AFFAIRE = @cleAffaire AND CLE_PROCESSUS IN @cles";
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE AGGRE_ID = @cleAffaire AND CLE_DEFIN IN @cles";
         if (statuts is { Count: > 0 })
         {
-            requete += " AND STATUT IN @statuts";
+            requete += " AND STAT IN @statuts";
         }
 
         return ListerAsync(
-            requete + " ORDER BY ID",
+            requete + " ORDER BY NO_SEQ_INSTC_PROCS",
             new { cleAffaire, cles = clesProcessus.ToArray(), statuts = statuts?.Select(CodesBase.Code).ToArray() ?? [] },
             ct);
     }
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirEnfantsActifsAsync(IdInstance idParent, CancellationToken ct)
         => ListerAsync(
-            $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTANCE_PARENT = @id AND STATUT IN {CodesBase.StatutsActifs} ORDER BY ID",
+            $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTC_PARN = @id AND STAT IN {CodesBase.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
             new { id = idParent.Valeur },
             ct);
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirEnErreurAsync(int decalage, int taille, CancellationToken ct)
         => ListerAsync(
-            sql.Dialecte.Paginer($"SELECT {Colonnes} FROM {Table} WHERE STATUT = 'EN_ERREUR' ORDER BY DATE_ERREUR DESC, ID", decalage, taille),
+            sql.Dialecte.Paginer($"SELECT {Colonnes} FROM {Table} WHERE STAT = 'EN_ERREUR' ORDER BY DH_ERR DESC, NO_SEQ_INSTC_PROCS", decalage, taille),
             null,
             ct);
 
     public async Task<IReadOnlyList<CompteInstancesActives>> CompterActivesAsync(string cleProcessus, CancellationToken ct)
     {
         var lignes = await sql.Connexion.QueryAsync<LigneCompte>(sql.Lecture(
-            $"SELECT i.ID_DEFINITION AS ID_DEFINITION, d.VERSION AS VERSION, i.CODE_NOEUD_COURANT AS CODE_NOEUD, COUNT(*) AS NOMBRE " +
-            $"FROM {Table} i JOIN {sql.Noms.Definition} d ON d.ID = i.ID_DEFINITION " +
-            $"WHERE i.CLE_PROCESSUS = @cle AND i.STATUT IN {CodesBase.StatutsActifs} " +
-            "GROUP BY i.ID_DEFINITION, d.VERSION, i.CODE_NOEUD_COURANT ORDER BY d.VERSION, i.CODE_NOEUD_COURANT",
+            $"SELECT i.NO_SEQ_DEFIN_PROCS AS NO_SEQ_DEFIN_PROCS, d.VERSI AS VERSI, i.ID_NOEUD_COUR AS ID_NOEUD, COUNT(*) AS NOMBRE " +
+            $"FROM {Table} i JOIN {sql.Noms.Definition} d ON d.NO_SEQ_DEFIN_PROCS = i.NO_SEQ_DEFIN_PROCS " +
+            $"WHERE i.CLE_DEFIN = @cle AND i.STAT IN {CodesBase.StatutsActifs} " +
+            "GROUP BY i.NO_SEQ_DEFIN_PROCS, d.VERSI, i.ID_NOEUD_COUR ORDER BY d.VERSI, i.ID_NOEUD_COUR",
             new { cle = cleProcessus },
             ct));
-        return lignes.Select(l => new CompteInstancesActives(new IdDefinition(l.ID_DEFINITION), l.VERSION, l.CODE_NOEUD, l.NOMBRE)).ToList();
+        return lignes.Select(l => new CompteInstancesActives(new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l.VERSI, l.ID_NOEUD, l.NOMBRE)).ToList();
     }
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirAuReposAsync(IdDefinition idDefinition, string? codeNoeud, int taille, CancellationToken ct)
     {
-        var requete = $"SELECT {Colonnes} FROM {Table} WHERE ID_DEFINITION = @id AND STATUT IN {CodesBase.StatutsAuRepos}";
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_DEFIN_PROCS = @id AND STAT IN {CodesBase.StatutsAuRepos}";
         if (codeNoeud is not null)
         {
-            requete += " AND CODE_NOEUD_COURANT = @code";
+            requete += " AND ID_NOEUD_COUR = @code";
         }
 
-        return ListerAsync(sql.Dialecte.Limiter(requete + " ORDER BY ID", taille), new { id = idDefinition.Valeur, code = codeNoeud }, ct);
+        return ListerAsync(sql.Dialecte.Limiter(requete + " ORDER BY NO_SEQ_INSTC_PROCS", taille), new { id = idDefinition.Valeur, code = codeNoeud }, ct);
     }
 
     public Task RenommerNoeudParentAsync(IdInstance idParent, string ancienCode, string nouveauCode, CancellationToken ct)
         => sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET CODE_NOEUD_PARENT = @nouveau WHERE ID_INSTANCE_PARENT = @id AND CODE_NOEUD_PARENT = @ancien AND STATUT IN {CodesBase.StatutsActifs}",
+            $"UPDATE {Table} SET ID_NOEUD_PARN = @nouveau WHERE ID_INSTC_PARN = @id AND ID_NOEUD_PARN = @ancien AND STAT IN {CodesBase.StatutsActifs}",
             new { id = idParent.Valeur, ancien = ancienCode, nouveau = nouveauCode },
             ct));
 
@@ -145,73 +145,73 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     private sealed class LigneCompte
     {
-        public long ID_DEFINITION { get; set; }
+        public long NO_SEQ_DEFIN_PROCS { get; set; }
 
-        public int VERSION { get; set; }
+        public int VERSI { get; set; }
 
-        public string CODE_NOEUD { get; set; } = "";
+        public string ID_NOEUD { get; set; } = "";
 
         public int NOMBRE { get; set; }
     }
 
     private sealed class Ligne
     {
-        public long ID { get; set; }
+        public long NO_SEQ_INSTC_PROCS { get; set; }
 
-        public long ID_DEFINITION { get; set; }
+        public long NO_SEQ_DEFIN_PROCS { get; set; }
 
-        public string CLE_PROCESSUS { get; set; } = "";
+        public string CLE_DEFIN { get; set; } = "";
 
-        public long? ID_INSTANCE_PARENT { get; set; }
+        public long? ID_INSTC_PARN { get; set; }
 
-        public string? CODE_NOEUD_PARENT { get; set; }
+        public string? ID_NOEUD_PARN { get; set; }
 
-        public long CLE_AFFAIRE { get; set; }
+        public long AGGRE_ID { get; set; }
 
-        public int INSTANCE_UNIQUE { get; set; }
+        public int IND_INSTC_UNIQ { get; set; }
 
-        public string STATUT { get; set; } = "";
+        public string STAT { get; set; } = "";
 
-        public string? CODE_FIN { get; set; }
+        public string? ID_NOEUD_FIN { get; set; }
 
-        public string CODE_NOEUD_COURANT { get; set; } = "";
+        public string ID_NOEUD_COUR { get; set; } = "";
 
-        public long? ID_TACHE_COURANTE { get; set; }
+        public long? ID_TACH_EXTE { get; set; }
 
-        public string? VARIABLES { get; set; }
+        public string? VAR_JSON { get; set; }
 
-        public string? MESSAGE_ERREUR { get; set; }
+        public string? MESS_ERR { get; set; }
 
-        public DateTime? DATE_ERREUR { get; set; }
+        public DateTime? DH_ERR { get; set; }
 
-        public int VERSION { get; set; }
+        public int VERSI { get; set; }
 
-        public DateTime DATE_CREATION { get; set; }
+        public DateTime DH_CREA { get; set; }
 
-        public DateTime DATE_MAJ { get; set; }
+        public DateTime DH_MODIF { get; set; }
 
-        public DateTime? DATE_FIN { get; set; }
+        public DateTime? DH_FIN { get; set; }
 
         public InstanceProcessus VersDomaine() => new()
         {
-            Id = new IdInstance(ID),
-            IdDefinition = new IdDefinition(ID_DEFINITION),
-            CleProcessus = CLE_PROCESSUS,
-            IdInstanceParent = ID_INSTANCE_PARENT is null ? null : new IdInstance(ID_INSTANCE_PARENT.Value),
-            CodeNoeudParent = CODE_NOEUD_PARENT,
-            CleAffaire = CLE_AFFAIRE,
-            InstanceUnique = INSTANCE_UNIQUE != 0,
-            Statut = CodesBase.LireStatutInstance(STATUT),
-            CodeFin = CODE_FIN,
-            CodeNoeudCourant = CODE_NOEUD_COURANT,
-            IdTacheCourante = ID_TACHE_COURANTE,
-            VariablesJson = VARIABLES,
-            MessageErreur = MESSAGE_ERREUR,
-            DateErreur = Utc(DATE_ERREUR),
-            Version = VERSION,
-            DateCreation = Utc(DATE_CREATION),
-            DateMaj = Utc(DATE_MAJ),
-            DateFin = Utc(DATE_FIN),
+            Id = new IdInstance(NO_SEQ_INSTC_PROCS),
+            IdDefinition = new IdDefinition(NO_SEQ_DEFIN_PROCS),
+            CleProcessus = CLE_DEFIN,
+            IdInstanceParent = ID_INSTC_PARN is null ? null : new IdInstance(ID_INSTC_PARN.Value),
+            CodeNoeudParent = ID_NOEUD_PARN,
+            CleAffaire = AGGRE_ID,
+            InstanceUnique = IND_INSTC_UNIQ != 0,
+            Statut = CodesBase.LireStatutInstance(STAT),
+            CodeFin = ID_NOEUD_FIN,
+            CodeNoeudCourant = ID_NOEUD_COUR,
+            IdTacheCourante = ID_TACH_EXTE,
+            VariablesJson = VAR_JSON,
+            MessageErreur = MESS_ERR,
+            DateErreur = Utc(DH_ERR),
+            Version = VERSI,
+            DateCreation = Utc(DH_CREA),
+            DateMaj = Utc(DH_MODIF),
+            DateFin = Utc(DH_FIN),
         };
     }
 }
