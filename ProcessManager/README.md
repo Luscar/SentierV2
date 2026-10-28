@@ -1,6 +1,6 @@
 # ProcessManager
 
-Process manager léger et autonome (aucune dépendance hors BCL, `System.Text.Json` pour l'état).
+Process manager léger et autonome, implémentant [SPEC.md](SPEC.md) (aucune dépendance hors BCL, `System.Text.Json` pour l'état).
 
 ```
 src/ProcessManager/
