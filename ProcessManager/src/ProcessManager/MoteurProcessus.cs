@@ -14,25 +14,34 @@ public sealed class MoteurProcessus(IStoreInstances store, IUniteDeTravail unite
         return id;
     }
 
-    /// <summary>Envoie un événement à une instance en attente. Retourne false (sans rien faire) si elle n'est pas en attente.</summary>
-    public async Task<bool> Signaler(Guid id, object evenement, CancellationToken ct = default)
+    /// <summary>
+    /// Envoie un événement à une instance en attente. Retourne false (sans rien faire) si elle n'est pas en attente,
+    /// ou si <paramref name="etape"/> est précisée et n'est pas l'étape courante.
+    /// </summary>
+    public async Task<bool> Signaler(Guid id, object evenement, string? etape = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(evenement);
-        return await ReveillerEtCommit(await store.Charger(id, ct), _ => evenement, ct);
+        return await ReveillerEtCommit(await store.Charger(id, ct), etape, _ => evenement, ct);
     }
 
-    /// <summary>Envoie un événement à l'instance en attente du type donné portant la clé de corrélation donnée.</summary>
-    public async Task<bool> Signaler<TProcessus>(string cleCorrelation, object evenement, CancellationToken ct = default)
+    /// <summary>
+    /// Envoie un événement à l'instance en attente du type donné portant la clé de corrélation donnée
+    /// (et, si <paramref name="etape"/> est précisée, en attente à cette étape).
+    /// </summary>
+    public async Task<bool> Signaler<TProcessus>(string cleCorrelation, object evenement, string? etape = null, CancellationToken ct = default)
         where TProcessus : ProcessusBase
     {
         ArgumentNullException.ThrowIfNull(evenement);
         var instance = await store.TrouverEnAttente(NomType(typeof(TProcessus)), cleCorrelation, ct);
-        return await ReveillerEtCommit(instance, _ => evenement, ct);
+        return await ReveillerEtCommit(instance, etape, _ => evenement, ct);
     }
 
-    /// <summary>Abandonne l'attente d'une instance ; elle reçoit <see cref="AttenteAbandonnee"/>.</summary>
-    public async Task<bool> Abandonner(Guid id, string? raison = null, CancellationToken ct = default) =>
-        await ReveillerEtCommit(await store.Charger(id, ct), i => new AttenteAbandonnee(i.Etape!, raison), ct);
+    /// <summary>
+    /// Abandonne l'attente d'une instance ; elle reçoit <see cref="AttenteAbandonnee"/>.
+    /// Si <paramref name="etape"/> est précisée, n'abandonne que si c'est l'étape courante.
+    /// </summary>
+    public async Task<bool> Abandonner(Guid id, string? raison = null, string? etape = null, CancellationToken ct = default) =>
+        await ReveillerEtCommit(await store.Charger(id, ct), etape, i => new AttenteAbandonnee(i.Etape!, raison), ct);
 
     /// <summary>Réveille avec <see cref="DelaiExpire"/> les instances dont l'échéance est dépassée. Retourne leur nombre.</summary>
     public async Task<int> Tick(CancellationToken ct = default)
@@ -53,9 +62,9 @@ public sealed class MoteurProcessus(IStoreInstances store, IUniteDeTravail unite
         return reveillees;
     }
 
-    private async Task<bool> ReveillerEtCommit(InstanceProcessus? instance, Func<InstanceProcessus, object> message, CancellationToken ct)
+    private async Task<bool> ReveillerEtCommit(InstanceProcessus? instance, string? etape, Func<InstanceProcessus, object> message, CancellationToken ct)
     {
-        if (instance is not { Statut: StatutProcessus.EnAttente })
+        if (instance is not { Statut: StatutProcessus.EnAttente } || (etape is not null && instance.Etape != etape))
             return false;
         await Reveiller(instance, message(instance), ct);
         await uniteDeTravail.Commit(ct);

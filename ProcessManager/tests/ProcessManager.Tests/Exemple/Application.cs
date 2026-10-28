@@ -37,3 +37,4 @@ public sealed record RelancerDeclarant(Guid AggregateId, int Relance);
 public sealed record DemanderSignature(Guid AggregateId);
 public sealed record ObtenirStatutDeclaration(Guid AggregateId);
 public sealed record StatutDeclaration(bool Identifiee);
+public sealed record NotifierApprobateur(Guid DossierId);
