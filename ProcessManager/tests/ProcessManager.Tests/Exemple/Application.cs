@@ -33,8 +33,13 @@ public sealed class BusQueriesTest : IBusQueries
 // Commandes et queries de l'application.
 public sealed record IdentifierDeclaration(Guid AggregateId);
 public sealed record ValiderDeclaration(Guid AggregateId);
-public sealed record RelancerDeclarant(Guid AggregateId, int Relance);
+public sealed record ComptabiliserDeclaration(Guid AggregateId);
+public sealed record DemanderAutorisationRejet(Guid AggregateId);
+public sealed record Relancer(Guid AggregateId, string Etape, int Relance);
 public sealed record DemanderSignature(Guid AggregateId);
-public sealed record ObtenirStatutDeclaration(Guid AggregateId);
-public sealed record StatutDeclaration(bool Identifiee);
-public sealed record NotifierApprobateur(Guid DossierId);
+
+public sealed record VerifierIdentification(Guid AggregateId);
+public sealed record VerifierValidation(Guid AggregateId);
+public sealed record VerifierComptabilisation(Guid AggregateId);
+public sealed record ObtenirDateComptabilisation(Guid AggregateId);
+public sealed record Verdict(bool Accepte);

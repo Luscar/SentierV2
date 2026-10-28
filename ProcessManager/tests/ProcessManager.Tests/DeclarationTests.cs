@@ -1,4 +1,5 @@
 using ProcessManager.Tests.Exemple;
+using static ProcessManager.Tests.Exemple.DeclarationOriginale;
 
 namespace ProcessManager.Tests;
 
@@ -9,14 +10,22 @@ public sealed class DeclarationTests
 
     private Task<Guid> Demarrer() => _c.Moteur.Demarrer<DeclarationOriginale>(p => p.Demarrer(_aggregat));
 
-    [Fact]
-    public async Task Un_demarrage_menant_a_une_tache_user_suspend_avec_une_seule_sauvegarde_et_un_seul_commit()
+    private async Task AtteindreComptabilisation(Guid id)
     {
+        _c.Horloge.Maintenant = _c.DateComptabilisation;
+        Assert.Equal(1, await _c.Moteur.Tick());
+    }
+
+    [Fact]
+    public async Task Un_rejet_d_identification_ouvre_une_tache_user_avec_une_seule_sauvegarde_et_un_seul_commit()
+    {
+        _c.IdentificationAcceptee = false;
+
         var id = await Demarrer();
 
         var instance = _c.Instance(id);
         Assert.Equal(StatutProcessus.EnAttente, instance.Statut);
-        Assert.Equal(DeclarationOriginale.EtapeCorrection, instance.Etape);
+        Assert.Equal(EtapeCorrectionIdentification, instance.Etape);
         Assert.Equal(_c.Horloge.Maintenant.AddDays(5), instance.Echeance);
         Assert.Equal(_aggregat.ToString(), instance.CleCorrelation);
         Assert.Equal(_aggregat, _c.EtatDeclaration(id).AggregateId);
@@ -26,72 +35,123 @@ public sealed class DeclarationTests
     }
 
     [Fact]
-    public async Task Les_etapes_systemiques_et_decisions_chainees_ne_sauvegardent_pas()
+    public async Task Identification_et_validation_chainees_ne_sauvegardent_qu_a_l_attente_de_comptabilisation()
     {
-        _c.IdentificationReussie(true);
-
         var id = await Demarrer();
 
-        // Demarrer → Identifiee → appel de Signature → tâche user de Signature : une sauvegarde par instance, un commit.
-        Assert.Equal(2, _c.Store.Sauvegardes);
+        var instance = _c.Instance(id);
+        Assert.Equal(EtapeAttenteComptabilisation, instance.Etape);
+        Assert.Equal(_c.DateComptabilisation, instance.Echeance);
+        Assert.Equal(1, _c.Store.Sauvegardes);
         Assert.Equal(1, _c.Store.Commits);
-        Assert.Equal(
-            [new IdentifierDeclaration(_aggregat), new ValiderDeclaration(_aggregat), new DemanderSignature(_aggregat)],
-            _c.Commandes.Envoyees);
-        Assert.Equal(StatutProcessus.AttenteEnfant, _c.Instance(id).Statut);
+        Assert.Equal([new IdentifierDeclaration(_aggregat), new ValiderDeclaration(_aggregat)], _c.Commandes.Envoyees);
     }
 
     [Fact]
-    public async Task Un_signal_reveille_le_handle_correspondant()
+    public async Task Parcours_nominal_jusqu_a_la_comptabilisation()
     {
-        await Demarrer();
-        _c.IdentificationReussie(true);
+        var id = await Demarrer();
+        _c.Horloge.Maintenant = _c.DateComptabilisation.AddMinutes(-1);
+        Assert.Equal(0, await _c.Moteur.Tick());
 
-        Assert.True(await _c.Moteur.Signaler<DeclarationOriginale>(_aggregat.ToString(), new CorrectionSoumise()));
+        await AtteindreComptabilisation(id);
 
-        Assert.Equal(2, _c.Commandes.Envoyees.OfType<IdentifierDeclaration>().Count());
-        Assert.Contains(new ValiderDeclaration(_aggregat), _c.Commandes.Envoyees);
+        Assert.Equal(StatutProcessus.Termine, _c.Instance(id).Statut);
+        Assert.Equal("comptabilisée", _c.EtatDeclaration(id).Resultat);
+        Assert.Equal(1, _c.Envoyees<ComptabiliserDeclaration>());
         Assert.Equal(2, _c.Store.Commits);
     }
 
     [Fact]
-    public async Task Un_signal_sans_instance_en_attente_ne_fait_rien()
+    public async Task La_correction_d_identification_reprend_l_identification()
     {
-        Assert.False(await _c.Moteur.Signaler<DeclarationOriginale>("inconnue", new CorrectionSoumise()));
-        Assert.False(await _c.Moteur.Signaler(Guid.NewGuid(), new CorrectionSoumise()));
-        Assert.False(await _c.Moteur.Abandonner(Guid.NewGuid()));
-        Assert.Equal(0, _c.Store.Commits);
-    }
-
-    [Fact]
-    public async Task Une_fin_de_delai_reveille_DelaiExpire_et_relance()
-    {
+        _c.IdentificationAcceptee = false;
         var id = await Demarrer();
-        _c.Horloge.Avancer(TimeSpan.FromDays(5));
+        _c.IdentificationAcceptee = true;
 
-        Assert.Equal(1, await _c.Moteur.Tick());
+        Assert.True(await _c.Moteur.Signaler<DeclarationOriginale>(_aggregat.ToString(), new CorrectionSoumise(), EtapeCorrectionIdentification));
 
-        var instance = _c.Instance(id);
-        Assert.Equal(StatutProcessus.EnAttente, instance.Statut);
-        Assert.Equal(_c.Horloge.Maintenant.AddDays(5), instance.Echeance);
-        Assert.Equal(1, _c.EtatDeclaration(id).Relances);
-        Assert.Contains(new RelancerDeclarant(_aggregat, 1), _c.Commandes.Envoyees);
+        Assert.Equal(2, _c.Envoyees<IdentifierDeclaration>());
+        Assert.Equal(1, _c.Envoyees<ValiderDeclaration>());
+        Assert.Equal(EtapeAttenteComptabilisation, _c.Instance(id).Etape);
     }
 
     [Fact]
-    public async Task L_etat_est_restaure_a_chaque_rehydratation()
+    public async Task La_correction_de_validation_ne_reprend_que_la_validation()
     {
+        _c.ValidationAcceptee = false;
+        var id = await Demarrer();
+        Assert.Equal(EtapeCorrectionValidation, _c.Instance(id).Etape);
+        _c.ValidationAcceptee = true;
+
+        Assert.True(await _c.Moteur.Signaler(id, new CorrectionSoumise(), EtapeCorrectionValidation));
+
+        Assert.Equal(1, _c.Envoyees<IdentifierDeclaration>());
+        Assert.Equal(2, _c.Envoyees<ValiderDeclaration>());
+        Assert.Equal(EtapeAttenteComptabilisation, _c.Instance(id).Etape);
+    }
+
+    [Fact]
+    public async Task Un_signal_destine_a_une_autre_etape_est_ignore()
+    {
+        _c.IdentificationAcceptee = false;
+        var id = await Demarrer();
+        var avant = _c.Instance(id);
+
+        Assert.False(await _c.Moteur.Signaler(id, new CorrectionSoumise(), EtapeCorrectionValidation));
+        Assert.False(await _c.Moteur.Signaler(id, new RejetAutorise(), EtapeAutorisationRejet));
+        Assert.False(await _c.Moteur.Abandonner(id, etape: EtapeAutorisationRejet));
+
+        Assert.Equal(avant, _c.Instance(id));
+        Assert.Equal(1, _c.Store.Commits);
+    }
+
+    [Fact]
+    public async Task Un_rejet_de_comptabilisation_demande_une_autorisation_de_rejet()
+    {
+        _c.ComptabilisationAcceptee = false;
+        var id = await Demarrer();
+        await AtteindreComptabilisation(id);
+
+        Assert.Equal(EtapeAutorisationRejet, _c.Instance(id).Etape);
+        Assert.Equal(_c.Horloge.Maintenant.AddDays(5), _c.Instance(id).Echeance);
+        Assert.Equal(1, _c.Envoyees<DemanderAutorisationRejet>());
+
+        Assert.True(await _c.Moteur.Signaler(id, new RejetAutorise(), EtapeAutorisationRejet));
+
+        Assert.Equal(StatutProcessus.Termine, _c.Instance(id).Statut);
+        Assert.Equal("rejetée", _c.EtatDeclaration(id).Resultat);
+    }
+
+    [Fact]
+    public async Task Un_rejet_refuse_relance_la_comptabilisation()
+    {
+        _c.ComptabilisationAcceptee = false;
+        var id = await Demarrer();
+        await AtteindreComptabilisation(id);
+        _c.ComptabilisationAcceptee = true;
+
+        Assert.True(await _c.Moteur.Signaler(id, new RejetRefuse(), EtapeAutorisationRejet));
+
+        Assert.Equal(2, _c.Envoyees<ComptabiliserDeclaration>());
+        Assert.Equal("comptabilisée", _c.EtatDeclaration(id).Resultat);
+    }
+
+    [Fact]
+    public async Task Les_relances_restaurent_l_etat_a_chaque_rehydratation_puis_expirent()
+    {
+        _c.IdentificationAcceptee = false;
         var id = await Demarrer();
 
         for (var i = 0; i < 3; i++)
         {
-            _c.Horloge.Avancer(TimeSpan.FromDays(5));
-            await _c.Moteur.Tick();
+            _c.Horloge.Avancer(DelaiTache);
+            Assert.Equal(1, await _c.Moteur.Tick());
         }
 
         Assert.Equal(
-            [new RelancerDeclarant(_aggregat, 1), new RelancerDeclarant(_aggregat, 2)],
-            _c.Commandes.Envoyees.OfType<RelancerDeclarant>());
+            [new Relancer(_aggregat, EtapeCorrectionIdentification, 1), new Relancer(_aggregat, EtapeCorrectionIdentification, 2)],
+            _c.Commandes.Envoyees.OfType<Relancer>());
         var etat = _c.EtatDeclaration(id);
         Assert.Equal(_aggregat, etat.AggregateId);
         Assert.Equal(3, etat.Relances);
@@ -100,11 +160,28 @@ public sealed class DeclarationTests
     }
 
     [Fact]
+    public async Task Les_relances_repartent_de_zero_a_chaque_nouvelle_tache()
+    {
+        _c.IdentificationAcceptee = false;
+        _c.ValidationAcceptee = false;
+        var id = await Demarrer();
+        _c.Horloge.Avancer(DelaiTache);
+        await _c.Moteur.Tick();
+        Assert.Equal(1, _c.EtatDeclaration(id).Relances);
+
+        _c.IdentificationAcceptee = true;
+        await _c.Moteur.Signaler(id, new CorrectionSoumise());
+
+        Assert.Equal(EtapeCorrectionValidation, _c.Instance(id).Etape);
+        Assert.Equal(0, _c.EtatDeclaration(id).Relances);
+    }
+
+    [Fact]
     public async Task Un_abandon_reveille_AttenteAbandonnee()
     {
         var id = await Demarrer();
 
-        Assert.True(await _c.Moteur.Abandonner(id, "annulée par le déclarant"));
+        Assert.True(await _c.Moteur.Abandonner(id, "annulée", EtapeAttenteComptabilisation));
 
         Assert.Equal(StatutProcessus.Termine, _c.Instance(id).Statut);
         Assert.Equal("abandonnée", _c.EtatDeclaration(id).Resultat);
@@ -113,6 +190,7 @@ public sealed class DeclarationTests
     [Fact]
     public async Task Apres_un_premier_declencheur_les_suivants_sont_ignores()
     {
+        _c.IdentificationAcceptee = false;
         var id = await Demarrer();
         await _c.Moteur.Abandonner(id);
         var apres = _c.Instance(id);
@@ -127,8 +205,18 @@ public sealed class DeclarationTests
     }
 
     [Fact]
+    public async Task Un_signal_sans_instance_en_attente_ne_fait_rien()
+    {
+        Assert.False(await _c.Moteur.Signaler<DeclarationOriginale>("inconnue", new CorrectionSoumise()));
+        Assert.False(await _c.Moteur.Signaler(Guid.NewGuid(), new CorrectionSoumise()));
+        Assert.False(await _c.Moteur.Abandonner(Guid.NewGuid()));
+        Assert.Equal(0, _c.Store.Commits);
+    }
+
+    [Fact]
     public async Task Tick_ne_reveille_que_les_instances_echues()
     {
+        _c.IdentificationAcceptee = false;
         var premiere = await Demarrer();
         _c.Horloge.Avancer(TimeSpan.FromDays(2));
         var seconde = await _c.Moteur.Demarrer<DeclarationOriginale>(p => p.Demarrer(Guid.NewGuid()));
@@ -139,54 +227,5 @@ public sealed class DeclarationTests
         Assert.Equal(1, _c.EtatDeclaration(premiere).Relances);
         Assert.Equal(0, _c.EtatDeclaration(seconde).Relances);
         Assert.Equal(0, await _c.Moteur.Tick());
-    }
-
-    [Theory]
-    [InlineData("signal", "signée")]
-    [InlineData("delai", "non-signée")]
-    [InlineData("abandon", "abandonnée")]
-    public async Task La_fin_du_sous_processus_reprend_le_parent_dans_la_meme_transaction(string declencheur, string resultat)
-    {
-        _c.IdentificationReussie(true);
-        var id = await Demarrer();
-        var enfant = _c.Enfant(id);
-        Assert.Equal(StatutProcessus.AttenteEnfant, _c.Instance(id).Statut);
-        Assert.Equal(DeclarationOriginale.EtapeSignature, _c.Instance(id).Etape);
-        Assert.Equal(StatutProcessus.EnAttente, enfant.Statut);
-        Assert.Equal(_c.Horloge.Maintenant.AddDays(10), enfant.Echeance);
-        var commits = _c.Store.Commits;
-
-        switch (declencheur)
-        {
-            case "signal":
-                await _c.Moteur.Signaler<Signature>(_aggregat.ToString(), new SignatureRecue());
-                break;
-            case "delai":
-                _c.Horloge.Avancer(TimeSpan.FromDays(10));
-                Assert.Equal(1, await _c.Moteur.Tick());
-                break;
-            default:
-                await _c.Moteur.Abandonner(enfant.Id);
-                break;
-        }
-
-        Assert.Equal(commits + 1, _c.Store.Commits);
-        Assert.Equal(StatutProcessus.Termine, _c.Instance(enfant.Id).Statut);
-        Assert.Equal(StatutProcessus.Termine, _c.Instance(id).Statut);
-        Assert.Equal(resultat, _c.EtatDeclaration(id).Resultat);
-    }
-
-    [Fact]
-    public async Task Un_sous_processus_peut_etre_demarre_seul()
-    {
-        var id = await _c.Moteur.Demarrer<Signature>(s => s.Demarrer(_aggregat));
-
-        var instance = _c.Instance(id);
-        Assert.Equal(StatutProcessus.EnAttente, instance.Statut);
-        Assert.Equal(Signature.EtapeSignature, instance.Etape);
-        Assert.Null(instance.ParentId);
-
-        Assert.True(await _c.Moteur.Signaler(id, new SignatureRecue()));
-        Assert.Equal(StatutProcessus.Termine, _c.Instance(id).Statut);
     }
 }
