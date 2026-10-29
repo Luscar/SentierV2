@@ -39,7 +39,7 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 
 <h2>Schéma</h2>
 <div class="card">
-<svg viewBox="0 0 760 445" role="img" aria-label="Branches de fonctionnalité longues synchronisées avec develop ; release 2026.1 en production jusqu'à sa fin de vie ; release 2026.2 coupée de develop pendant que la fonctionnalité B de 2026.3 débute ; correctifs reportés vers l'aval">
+<svg viewBox="0 0 760 445" role="img" aria-label="Branches de fonctionnalité longues synchronisées avec develop ; branche production (2026.1) remplacée par release 2026.2 renommée production à la mise en prod ; release 2026.2 coupée de develop pendant que la fonctionnalité B de 2026.3 débute ; correctifs reportés vers l'aval">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 
 <g stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 4"><line x1="300" y1="22" x2="300" y2="360"/><line x1="450" y1="22" x2="450" y2="360"/><line x1="600" y1="22" x2="600" y2="360"/></g>
@@ -48,16 +48,17 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <text class="lbl" x="525" y="12" text-anchor="middle">Itération 3</text>
 <text class="lbl" x="675" y="12" text-anchor="middle">Itération 4</text>
 
-<text class="lbl" x="16" y="50" dominant-baseline="central">release/2026.1</text>
+<text class="bold" x="16" y="50" dominant-baseline="central">production</text>
 <text class="lbl" x="16" y="100" dominant-baseline="central">hotfix/*</text>
 <text class="lbl" x="16" y="150" dominant-baseline="central">release/2026.2</text>
 <text class="bold" x="16" y="215" dominant-baseline="central">develop</text>
 <text class="lbl" x="16" y="280" dominant-baseline="central">feature/A</text>
 <text class="lbl" x="16" y="345" dominant-baseline="central">feature/B</text>
 
-<line x1="150" y1="50" x2="680" y2="50" stroke="#1D9E75" stroke-width="2"/>
-<line x1="680" y1="40" x2="680" y2="60" stroke="#1D9E75" stroke-width="3"/>
-<path d="M455 215 C468 185 474 150 492 150 L740 150" fill="none" stroke="#BA7517" stroke-width="2"/>
+<line x1="150" y1="50" x2="630" y2="50" stroke="#1D9E75" stroke-width="2"/>
+<line x1="630" y1="40" x2="630" y2="60" stroke="#1D9E75" stroke-width="3"/>
+<path d="M640 150 C668 150 672 50 700 50 L740 50" fill="none" stroke="#1D9E75" stroke-width="2"/>
+<path d="M455 215 C468 185 474 150 492 150 L640 150" fill="none" stroke="#BA7517" stroke-width="2"/>
 <line x1="150" y1="215" x2="740" y2="215" stroke="#7F77DD" stroke-width="2.5"/>
 
 <path d="M220 50 C230 75 236 100 250 100 L260 100 C274 100 280 75 290 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
@@ -99,8 +100,9 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <text x="170" y="32" text-anchor="middle">v2026.1 (prod)</text>
 <text x="290" y="32" text-anchor="middle">v2026.1.1</text>
 <text x="560" y="32" text-anchor="middle">v2026.1.2</text>
-<text class="lbl" x="680" y="32" text-anchor="middle">fin de vie</text>
-<text x="640" y="132" text-anchor="middle">v2026.2 (prod)</text>
+<text class="lbl" x="630" y="32" text-anchor="middle">fin de vie</text>
+<text class="lbl" x="676" y="100" dominant-baseline="central">renommage</text>
+<text x="640" y="172" text-anchor="middle">v2026.2 (prod)</text>
 <text class="lbl" x="520" y="168" text-anchor="middle">acceptation</text>
 <text class="lbl" x="445" y="196" text-anchor="end">coupe release/2026.2</text>
 <text class="lbl" x="408" y="300" text-anchor="middle">A terminée, dans 2026.2</text>
@@ -111,9 +113,9 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <line x1="400" y1="404" x2="436" y2="404" stroke="#5F5E5A" stroke-width="1.8"/>
 <text x="444" y="404" dominant-baseline="central">Intégration en fin d'itération (derrière flag)</text>
 <line x1="16" y1="428" x2="52" y2="428" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="60" y="428" dominant-baseline="central">Report vers l'aval : 2026.1 → 2026.2 → develop</text>
+<text x="60" y="428" dominant-baseline="central">Report vers l'aval : production → release → develop</text>
 <line x1="418" y1="420" x2="418" y2="436" stroke="#1D9E75" stroke-width="3"/>
-<text x="444" y="428" dominant-baseline="central">Fin de vie d'une release</text>
+<text x="444" y="428" dominant-baseline="central">Ancienne production remplacée</text>
 </svg>
 </div>
 
@@ -121,17 +123,26 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <div class="grid">
 <div class="box"><h3><span class="tag" style="background:#7F77DD"></span><code>develop</code></h3><p>Branche d'intégration, toujours compilable et testée. Reçoit le travail des équipes au moins à chaque fin d'itération, y compris celui de la livraison suivante.</p></div>
 <div class="box"><h3><span class="tag" style="background:#D4537E"></span><code>feature/*</code></h3><p>Une par fonctionnalité, peut vivre plusieurs itérations. Synchronisée avec <code>develop</code> au moins deux fois par semaine.</p></div>
-<div class="box"><h3><span class="tag" style="background:#1D9E75"></span><code>release/AAAA.N</code></h3><p>Coupée de <code>develop</code> au gel. Ne reçoit que de l'acceptation et des correctifs. Fermée quand la livraison suivante est en production.</p></div>
-<div class="box"><h3><span class="tag" style="background:#D85A30"></span><code>hotfix/*</code></h3><p>Créée depuis la release en production, fusionnée dans celle-ci (nouveau tag), puis reportée vers l'aval jusqu'à <code>develop</code>.</p></div>
+<div class="box"><h3><span class="tag" style="background:#1D9E75"></span><code>production</code></h3><p>Branche permanente qui reflète ce qui tourne en production. Remplacée à chaque livraison par la release qui vient d'être déployée.</p></div>
+<div class="box"><h3><span class="tag" style="background:#BA7517"></span><code>release/AAAA.N</code></h3><p>Coupée de <code>develop</code> au gel. Ne reçoit que de l'acceptation et des correctifs. Une fois livrée, elle est renommée <code>production</code> et écrase l'ancienne.</p></div>
+<div class="box"><h3><span class="tag" style="background:#D85A30"></span><code>hotfix/*</code></h3><p>Créée depuis <code>production</code>, fusionnée dans celle-ci (nouveau tag), puis reportée vers l'aval jusqu'à <code>develop</code>.</p></div>
 </div>
 
 <h2>Cycle de vie d'une release</h2>
 <ol>
 <li><strong>Coupe</strong> : au gel de la livraison, <code>release/2026.2</code> est créée depuis <code>develop</code>. Les flags des fonctionnalités de 2026.2 y sont activés.</li>
 <li><strong>Acceptation</strong> : seulement des correctifs, chacun reporté dans <code>develop</code>. Pendant ce temps, <code>develop</code> reçoit déjà le travail de 2026.3 derrière des flags désactivés.</li>
-<li><strong>Coexistence</strong> : tant que 2026.2 n'est pas en production, <code>release/2026.1</code> reste la branche de production. Un correctif de prod suit la cascade 2026.1 → 2026.2 → <code>develop</code>.</li>
-<li><strong>Mise en production</strong> : <code>v2026.2</code> est étiquetée et déployée. Les nouveaux correctifs partent désormais de <code>release/2026.2</code>.</li>
-<li><strong>Fin de vie</strong> : après une courte période de garde (retour arrière possible), <code>release/2026.1</code> est verrouillée en lecture seule puis supprimée. Les tags restent pour l'historique.</li>
+<li><strong>Coexistence</strong> : tant que 2026.2 n'est pas livrée, <code>production</code> contient 2026.1. Un correctif de prod suit la cascade <code>production</code> → <code>release/2026.2</code> → <code>develop</code>.</li>
+<li><strong>Mise en production</strong> : <code>v2026.2</code> est étiquetée et déployée, puis <code>release/2026.2</code> est renommée <code>production</code> et écrase l'ancienne branche. Les correctifs partent toujours de <code>production</code>.</li>
+<li><strong>Fin de vie</strong> : le contenu 2026.1 n'existe plus comme branche ; il reste accessible par ses tags (<code>v2026.1</code>, <code>v2026.1.2</code>) pour l'historique ou un retour arrière.</li>
+</ol>
+
+<h2>Renommer la release en production (Git)</h2>
+<ol>
+<li><strong>Vérifier</strong> que tous les correctifs de <code>production</code> ont été reportés : <code>git log origin/release/2026.2..origin/production</code> ne doit lister aucun changement non reporté.</li>
+<li><strong>Remplacer sans réécrire l'historique</strong> (recommandé) : sur <code>release/2026.2</code>, <code>git merge -s ours origin/production</code> garde le contenu de la release tout en rattachant l'historique de production ; puis <code>git push origin release/2026.2:production</code> (avance rapide, pas de force push).</li>
+<li><strong>Ou écraser directement</strong> : <code>git push --force-with-lease origin release/2026.2:production</code>, réservé au responsable des livraisons via une exception à la protection de branche.</li>
+<li><strong>Supprimer</strong> la branche <code>release/2026.2</code> : <code>git push origin --delete release/2026.2</code>. Le tag <code>v2026.2</code> reste.</li>
 </ol>
 
 <h2>Démarrer la livraison suivante avant la mise en production</h2>
@@ -140,7 +151,7 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <li>Si <code>release/2026.2</code> n'est pas encore coupée, elle contiendra ce code ; seuls les flags de 2026.2 sont activés.</li>
 <li>Les changements BD de 2026.3 (<code>modifications.sql</code>) doivent rester rétrocompatibles (expand/contract) : ajouter colonnes et tables sans rien supprimer ni renommer.</li>
 <li>Si 2026.2 exige une longue période d'acceptation, couper sa branche plus tôt et limiter la période de chevauchement à quelques semaines.</li>
-<li>Automatiser le report en cascade : un job CI fusionne chaque release dans la suivante et ouvre une PR en cas de conflit. Jamais de report dans l'autre sens.</li>
+<li>Automatiser le report en cascade : un job CI fusionne <code>production</code> dans la release en acceptation, puis celle-ci dans <code>develop</code>, et ouvre une PR en cas de conflit. Jamais de report dans l'autre sens.</li>
 </ul>
 
 <h2>Cycle d'une itération de 4 semaines</h2>
@@ -179,7 +190,8 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <li>Même pipeline CI sur les branches de fonctionnalité que sur <code>develop</code>.</li>
 <li>Sous-branches courtes révisées par PR vers la branche de fonctionnalité, pour garder des revues de taille raisonnable.</li>
 <li>Tout correctif de production est reporté vers l'aval jusqu'à <code>develop</code> le jour même ; les features le reçoivent à leur prochaine synchronisation.</li>
-<li>Au plus deux branches de release actives à la fois ; l'ancienne est fermée dès que la suivante est stable en production.</li>
+<li>Au plus deux branches de livraison à la fois : <code>production</code> et une <code>release/*</code> en acceptation.</li>
+<li>Branche <code>production</code> protégée : aucune modification directe, seulement des PR de hotfix et le renommage à la livraison.</li>
 <li>Nettoyage des feature flags après chaque livraison.</li>
 </ul>
 </main>
