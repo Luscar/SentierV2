@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Branches longues synchronisées</title>
+<title>Branches par renommage</title>
 <style>
 :root{--bg:#faf9f5;--card:#ffffff;--text:#1f1e1d;--muted:#5f5e5a;--border:#e3e1d9;--purple-f:#EEEDFE;--teal-f:#E1F5EE;--coral-f:#FAECE7;--gray-f:#F1EFE8;--pink-f:#FBEAF0;--blue-f:#E6F1FB;--amber-f:#FAEEDA;--code:#f1efe8;--accent:#534AB7}
 @media (prefers-color-scheme:dark){:root{--bg:#1f1e1d;--card:#2a2927;--text:#f1efe8;--muted:#b4b2a9;--border:#444441;--purple-f:#3C3489;--teal-f:#085041;--coral-f:#712B13;--gray-f:#444441;--pink-f:#72243E;--blue-f:#0C447C;--amber-f:#633806;--code:#383735;--accent:#AFA9EC}}
@@ -19,30 +19,34 @@ svg{width:100%;min-width:600px;max-width:960px;margin:0 auto;height:auto;display
 svg text{fill:var(--text);font-size:12px;font-family:inherit}
 svg .lbl{fill:var(--muted)}
 svg .bold{font-size:14px;font-weight:600}
+svg .num{font-size:11px;font-weight:600;fill:#633806}
 code{background:var(--code);padding:1px 6px;border-radius:4px;font-size:.92em}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .box{border-radius:12px;padding:14px 16px;border:1px solid var(--border);background:var(--card)}
 .box h3{margin:0 0 6px;font-size:16px}
 .box p{margin:0;color:var(--muted);font-size:15px}
 .tag{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .rule{border:1px solid var(--accent);border-radius:12px;padding:14px 16px;background:var(--purple-f)}
 .rule p{margin:0}
+.key{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:6px}
+.key li{display:flex;gap:10px;align-items:flex-start;margin:0}
+.badge{flex:none;width:22px;height:22px;border-radius:50%;background:#FAEEDA;border:1px solid #BA7517;color:#633806;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
 ol,ul{padding-left:22px}li{margin:4px 0}
 </style>
 </head>
 <body>
 <main>
-<h1>Branches longues synchronisées</h1>
+<h1>Stratégie de branches par renommage</h1>
 <p class="sub">Application .NET Core + Angular · 3 équipes · itérations de 4 semaines · livraisons aux 6 mois · 1 équipe de correctifs en production</p>
 
-<div class="rule"><p><strong>Règle centrale :</strong> une fonctionnalité peut s'étaler sur plusieurs itérations, mais son code ne diverge jamais de <code>develop</code> plus de 4 semaines. La fin de chaque itération est un point d'intégration obligatoire.</p></div>
+<div class="rule"><p><strong>Principe :</strong> les branches gardent des noms de rôle stables (<code>develop</code>, <code>release</code>, <code>production</code>). Une livraison avance d'un rôle à l'autre par renommage. Quand la livraison suivante démarre avant la fin de la courante, elle vit dans <code>develop/&lt;livraison&gt;</code> jusqu'à ce que <code>develop</code> se libère.</p></div>
 
 <h2>Schéma</h2>
 <div class="card">
-<svg viewBox="0 0 760 445" role="img" aria-label="Branches de fonctionnalité longues synchronisées avec develop ; branche production (2026.1) remplacée par release 2026.2 renommée production à la mise en prod ; release 2026.2 coupée de develop pendant que la fonctionnalité B de 2026.3 débute ; correctifs reportés vers l'aval">
+<svg viewBox="0 0 760 500" role="img" aria-label="develop (nov2026) renommée release quand ses fonctionnalités sont terminées, develop/mai2027 renommée develop, release renommée production à la livraison ; correctifs reportés vers l'aval">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 
-<g stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 4"><line x1="300" y1="22" x2="300" y2="360"/><line x1="450" y1="22" x2="450" y2="360"/><line x1="600" y1="22" x2="600" y2="360"/></g>
+<g stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 4"><line x1="300" y1="22" x2="300" y2="410"/><line x1="450" y1="22" x2="450" y2="410"/><line x1="600" y1="22" x2="600" y2="410"/></g>
 <text class="lbl" x="225" y="12" text-anchor="middle">Itération 1</text>
 <text class="lbl" x="375" y="12" text-anchor="middle">Itération 2</text>
 <text class="lbl" x="525" y="12" text-anchor="middle">Itération 3</text>
@@ -50,130 +54,143 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 
 <text class="bold" x="16" y="50" dominant-baseline="central">production</text>
 <text class="lbl" x="16" y="100" dominant-baseline="central">hotfix/*</text>
-<text class="lbl" x="16" y="150" dominant-baseline="central">release/2026.2</text>
+<text class="bold" x="16" y="150" dominant-baseline="central">release</text>
 <text class="bold" x="16" y="215" dominant-baseline="central">develop</text>
-<text class="lbl" x="16" y="280" dominant-baseline="central">feature/A</text>
-<text class="lbl" x="16" y="345" dominant-baseline="central">feature/B</text>
+<text class="lbl" x="16" y="275" dominant-baseline="central">feature/A (nov2026)</text>
+<text class="lbl" x="16" y="335" dominant-baseline="central">develop/mai2027</text>
+<text class="lbl" x="16" y="395" dominant-baseline="central">feature/B (mai2027)</text>
 
 <line x1="150" y1="50" x2="630" y2="50" stroke="#1D9E75" stroke-width="2"/>
 <line x1="630" y1="40" x2="630" y2="60" stroke="#1D9E75" stroke-width="3"/>
 <path d="M640 150 C668 150 672 50 700 50 L740 50" fill="none" stroke="#1D9E75" stroke-width="2"/>
 <path d="M455 215 C468 185 474 150 492 150 L640 150" fill="none" stroke="#BA7517" stroke-width="2"/>
-<line x1="150" y1="215" x2="740" y2="215" stroke="#7F77DD" stroke-width="2.5"/>
+<line x1="150" y1="215" x2="455" y2="215" stroke="#7F77DD" stroke-width="2.5"/>
+<path d="M300 215 C312 260 318 335 340 335 L470 335 C490 335 494 215 515 215 L740 215" fill="none" stroke="#534AB7" stroke-width="2.5"/>
 
 <path d="M220 50 C230 75 236 100 250 100 L260 100 C274 100 280 75 290 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
 <path d="M490 50 C500 75 506 100 520 100 L530 100 C544 100 550 75 560 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
 
-<path d="M170 215 C180 250 190 280 210 280 L440 280" fill="none" stroke="#D4537E" stroke-width="2"/>
-<path d="M320 215 C330 270 340 345 360 345 L740 345" fill="none" stroke="#378ADD" stroke-width="2"/>
+<path d="M170 215 C180 245 190 275 210 275 L440 275" fill="none" stroke="#D4537E" stroke-width="2"/>
+<path d="M330 335 C340 365 345 395 365 395 L740 395" fill="none" stroke="#378ADD" stroke-width="2"/>
 
 <g stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3" fill="none">
-<path d="M262 106 L298 205" marker-end="url(#arrow)"/>
+<path d="M262 106 L288 205" marker-end="url(#arrow)"/>
 <path d="M530 106 L546 142" marker-end="url(#arrow)"/>
 <path d="M554 158 L566 207" marker-end="url(#arrow)"/>
 </g>
 
 <g stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3" fill="none">
-<path d="M228 221 L236 272" marker-end="url(#arrow)"/>
-<path d="M266 221 L274 272" marker-end="url(#arrow)"/>
-<path d="M378 221 L386 272" marker-end="url(#arrow)"/>
-<path d="M414 221 L422 272" marker-end="url(#arrow)"/>
-<path d="M490 221 L498 337" marker-end="url(#arrow)"/>
-<path d="M576 221 L584 337" marker-end="url(#arrow)"/>
-<path d="M660 221 L668 337" marker-end="url(#arrow)"/>
-<path d="M712 221 L720 337" marker-end="url(#arrow)"/>
+<path d="M228 221 L234 267" marker-end="url(#arrow)"/>
+<path d="M268 221 L274 267" marker-end="url(#arrow)"/>
+<path d="M378 221 L384 267" marker-end="url(#arrow)"/>
+<path d="M362 221 L366 327" marker-end="url(#arrow)"/>
+<path d="M418 221 L422 327" marker-end="url(#arrow)"/>
+<path d="M396 341 L400 387" marker-end="url(#arrow)"/>
+<path d="M560 221 L566 387" marker-end="url(#arrow)"/>
+<path d="M664 221 L670 387" marker-end="url(#arrow)"/>
+<path d="M716 221 L722 387" marker-end="url(#arrow)"/>
 </g>
 
 <g stroke="#5F5E5A" stroke-width="1.8" fill="none">
-<path d="M290 274 L298 223" marker-end="url(#arrow)"/>
-<path d="M440 274 L448 223" marker-end="url(#arrow)"/>
-<path d="M600 339 L604 223" marker-end="url(#arrow)"/>
+<path d="M290 269 L296 223" marker-end="url(#arrow)"/>
+<path d="M436 269 L442 223" marker-end="url(#arrow)"/>
+<path d="M446 389 L450 343" marker-end="url(#arrow)"/>
+<path d="M604 389 L608 223" marker-end="url(#arrow)"/>
 </g>
 
-<g stroke="#7F77DD" fill="var(--purple-f)"><circle cx="170" cy="215" r="6"/><circle cx="320" cy="215" r="6"/><circle cx="455" cy="215" r="8"/><circle cx="640" cy="215" r="6"/></g>
+<g stroke="#7F77DD" fill="var(--purple-f)"><circle cx="170" cy="215" r="6"/><circle cx="300" cy="215" r="6"/></g>
+<g stroke="#534AB7" fill="var(--purple-f)"><circle cx="640" cy="215" r="6"/></g>
 <g stroke="#1D9E75" fill="var(--teal-f)"><circle cx="170" cy="50" r="8"/><circle cx="290" cy="50" r="7"/><circle cx="560" cy="50" r="7"/></g>
 <g stroke="#D85A30" fill="var(--coral-f)"><circle cx="255" cy="100" r="6"/><circle cx="525" cy="100" r="6"/></g>
 <g stroke="#BA7517" fill="var(--amber-f)"><circle cx="520" cy="150" r="5"/><circle cx="640" cy="150" r="8"/></g>
-<g stroke="#D4537E" fill="var(--pink-f)"><circle cx="250" cy="280" r="5"/><circle cx="350" cy="280" r="5"/><circle cx="400" cy="280" r="5"/></g>
-<g stroke="#378ADD" fill="var(--blue-f)"><circle cx="400" cy="345" r="5"/><circle cx="530" cy="345" r="5"/><circle cx="640" cy="345" r="5"/><circle cx="690" cy="345" r="5"/></g>
+<g stroke="#D4537E" fill="var(--pink-f)"><circle cx="245" cy="275" r="5"/><circle cx="335" cy="275" r="5"/><circle cx="400" cy="275" r="5"/></g>
+<g stroke="#378ADD" fill="var(--blue-f)"><circle cx="420" cy="395" r="5"/><circle cx="530" cy="395" r="5"/><circle cx="640" cy="395" r="5"/><circle cx="690" cy="395" r="5"/></g>
 
-<text x="170" y="32" text-anchor="middle">v2026.1 (prod)</text>
-<text x="290" y="32" text-anchor="middle">v2026.1.1</text>
-<text x="560" y="32" text-anchor="middle">v2026.1.2</text>
+<g stroke="#BA7517" stroke-width="1" fill="var(--amber-f)"><circle cx="440" cy="172" r="10"/><circle cx="530" cy="250" r="10"/><circle cx="690" cy="108" r="10"/></g>
+<text class="num" x="440" y="172" text-anchor="middle" dominant-baseline="central">1</text>
+<text class="num" x="530" y="250" text-anchor="middle" dominant-baseline="central">2</text>
+<text class="num" x="690" y="108" text-anchor="middle" dominant-baseline="central">3</text>
+
+<text x="170" y="32" text-anchor="middle">mai2026 (prod)</text>
+<text x="290" y="32" text-anchor="middle">mai2026.1</text>
+<text x="560" y="32" text-anchor="middle">mai2026.2</text>
 <text class="lbl" x="630" y="32" text-anchor="middle">fin de vie</text>
-<text class="lbl" x="676" y="100" dominant-baseline="central">renommage</text>
-<text x="640" y="172" text-anchor="middle">v2026.2 (prod)</text>
+<text x="640" y="172" text-anchor="middle">nov2026 (prod)</text>
 <text class="lbl" x="520" y="168" text-anchor="middle">acceptation</text>
-<text class="lbl" x="445" y="196" text-anchor="end">coupe release/2026.2</text>
-<text class="lbl" x="408" y="300" text-anchor="middle">A terminée, dans 2026.2</text>
-<text class="lbl" x="540" y="366" text-anchor="middle">B débute 2026.3 avant la mise en prod de 2026.2 (flag off)</text>
 
-<line x1="16" y1="404" x2="52" y2="404" stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3"/>
-<text x="60" y="404" dominant-baseline="central">Synchronisation develop → feature (2×/semaine)</text>
-<line x1="400" y1="404" x2="436" y2="404" stroke="#5F5E5A" stroke-width="1.8"/>
-<text x="444" y="404" dominant-baseline="central">Intégration en fin d'itération (derrière flag)</text>
-<line x1="16" y1="428" x2="52" y2="428" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="60" y="428" dominant-baseline="central">Report vers l'aval : production → release → develop</text>
-<line x1="418" y1="420" x2="418" y2="436" stroke="#1D9E75" stroke-width="3"/>
-<text x="444" y="428" dominant-baseline="central">Ancienne production remplacée</text>
+<line x1="16" y1="448" x2="52" y2="448" stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="60" y="448" dominant-baseline="central">Synchronisation vers l'aval (2×/semaine)</text>
+<line x1="400" y1="448" x2="436" y2="448" stroke="#5F5E5A" stroke-width="1.8"/>
+<text x="444" y="448" dominant-baseline="central">Intégration d'une feature</text>
+<line x1="16" y1="476" x2="52" y2="476" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="60" y="476" dominant-baseline="central">Correctif reporté vers l'aval</text>
+<circle cx="418" cy="476" r="9" stroke="#BA7517" stroke-width="1" fill="var(--amber-f)"/>
+<text class="num" x="418" y="476" text-anchor="middle" dominant-baseline="central">n</text>
+<text x="444" y="476" dominant-baseline="central">Renommage (voir ci-dessous)</text>
 </svg>
+<ol class="key">
+<li><span class="badge">1</span><span>Les fonctionnalités de nov2026 sont terminées : <code>develop</code> est renommée <code>release</code> et entre en acceptation.</span></li>
+<li><span class="badge">2</span><span><code>develop/mai2027</code> est renommée <code>develop</code> : la livraison suivante devient la livraison courante.</span></li>
+<li><span class="badge">3</span><span>nov2026 est livrée : <code>release</code> est renommée <code>production</code> et écrase l'ancienne. mai2026 ne reste accessible que par ses tags.</span></li>
+</ol>
 </div>
 
 <h2>Les branches</h2>
 <div class="grid">
-<div class="box"><h3><span class="tag" style="background:#7F77DD"></span><code>develop</code></h3><p>Branche d'intégration, toujours compilable et testée. Reçoit le travail des équipes au moins à chaque fin d'itération, y compris celui de la livraison suivante.</p></div>
-<div class="box"><h3><span class="tag" style="background:#D4537E"></span><code>feature/*</code></h3><p>Une par fonctionnalité, peut vivre plusieurs itérations. Synchronisée avec <code>develop</code> au moins deux fois par semaine.</p></div>
-<div class="box"><h3><span class="tag" style="background:#1D9E75"></span><code>production</code></h3><p>Branche permanente qui reflète ce qui tourne en production. Remplacée à chaque livraison par la release qui vient d'être déployée.</p></div>
-<div class="box"><h3><span class="tag" style="background:#BA7517"></span><code>release/AAAA.N</code></h3><p>Coupée de <code>develop</code> au gel. Ne reçoit que de l'acceptation et des correctifs. Une fois livrée, elle est renommée <code>production</code> et écrase l'ancienne.</p></div>
-<div class="box"><h3><span class="tag" style="background:#D85A30"></span><code>hotfix/*</code></h3><p>Créée depuis <code>production</code>, fusionnée dans celle-ci (nouveau tag), puis reportée vers l'aval jusqu'à <code>develop</code>.</p></div>
+<div class="box"><h3><span class="tag" style="background:#1D9E75"></span><code>production</code></h3><p>Ce qui tourne en production. Permanente, protégée. Écrasée à chaque livraison par <code>release</code>.</p></div>
+<div class="box"><h3><span class="tag" style="background:#BA7517"></span><code>release</code></h3><p>Livraison en acceptation. N'existe qu'entre le renommage de <code>develop</code> et la mise en production. Ne reçoit que des correctifs d'acceptation.</p></div>
+<div class="box"><h3><span class="tag" style="background:#7F77DD"></span><code>develop</code></h3><p>Livraison courante en développement. Les features de cette livraison y sont intégrées au moins à chaque fin d'itération.</p></div>
+<div class="box"><h3><span class="tag" style="background:#534AB7"></span><code>develop/&lt;livraison&gt;</code></h3><p>Livraison suivante qui démarre avant la fin de la courante. Tirée de <code>develop</code> et synchronisée avec elle. Devient <code>develop</code> au renommage.</p></div>
+<div class="box"><h3><span class="tag" style="background:#D4537E"></span><code>feature/*</code></h3><p>Une par fonctionnalité, tirée de la branche develop de sa livraison. Synchronisée deux fois par semaine, intégrée à chaque fin d'itération.</p></div>
+<div class="box"><h3><span class="tag" style="background:#D85A30"></span><code>hotfix/*</code></h3><p>Tirée de <code>production</code>, fusionnée dans celle-ci (nouveau tag), puis reportée vers l'aval jusqu'à la dernière branche develop.</p></div>
 </div>
 
-<h2>Cycle de vie d'une release</h2>
+<h2>Cycle d'une livraison</h2>
 <ol>
-<li><strong>Coupe</strong> : au gel de la livraison, <code>release/2026.2</code> est créée depuis <code>develop</code>. Les flags des fonctionnalités de 2026.2 y sont activés.</li>
-<li><strong>Acceptation</strong> : seulement des correctifs, chacun reporté dans <code>develop</code>. Pendant ce temps, <code>develop</code> reçoit déjà le travail de 2026.3 derrière des flags désactivés.</li>
-<li><strong>Coexistence</strong> : tant que 2026.2 n'est pas livrée, <code>production</code> contient 2026.1. Un correctif de prod suit la cascade <code>production</code> → <code>release/2026.2</code> → <code>develop</code>.</li>
-<li><strong>Mise en production</strong> : <code>v2026.2</code> est étiquetée et déployée, puis <code>release/2026.2</code> est renommée <code>production</code> et écrase l'ancienne branche. Les correctifs partent toujours de <code>production</code>.</li>
-<li><strong>Fin de vie</strong> : le contenu 2026.1 n'existe plus comme branche ; il reste accessible par ses tags (<code>v2026.1</code>, <code>v2026.1.2</code>) pour l'historique ou un retour arrière.</li>
+<li><strong>Développement</strong> : la livraison vit dans <code>develop</code>. Ses features s'y intègrent à chaque fin d'itération.</li>
+<li><strong>Chevauchement</strong> : si une équipe commence la livraison suivante, on crée <code>develop/mai2027</code> depuis <code>develop</code>. Elle reçoit tout ce qui entre dans <code>develop</code> (synchronisation au moins deux fois par semaine), jamais l'inverse.</li>
+<li><strong>Fin du développement</strong> : toutes les features de nov2026 sont terminées et intégrées. <code>develop</code> est renommée <code>release</code> <span class="badge">1</span>, puis <code>develop/mai2027</code> est renommée <code>develop</code> <span class="badge">2</span>. Les branches feature/* de mai2027 continuent sans changement : leur parent porte simplement un nouveau nom.</li>
+<li><strong>Acceptation</strong> : <code>release</code> ne reçoit que des correctifs, chacun reporté dans <code>develop</code>.</li>
+<li><strong>Livraison</strong> : tag <code>nov2026</code>, déploiement, puis <code>release</code> est renommée <code>production</code> <span class="badge">3</span>. Il n'y a plus de branche <code>release</code> jusqu'au prochain renommage.</li>
 </ol>
 
-<h2>Renommer la release en production (Git)</h2>
-<ol>
-<li><strong>Vérifier</strong> que tous les correctifs de <code>production</code> ont été reportés : <code>git log origin/release/2026.2..origin/production</code> ne doit lister aucun changement non reporté.</li>
-<li><strong>Remplacer sans réécrire l'historique</strong> (recommandé) : sur <code>release/2026.2</code>, <code>git merge -s ours origin/production</code> garde le contenu de la release tout en rattachant l'historique de production ; puis <code>git push origin release/2026.2:production</code> (avance rapide, pas de force push).</li>
-<li><strong>Ou écraser directement</strong> : <code>git push --force-with-lease origin release/2026.2:production</code>, réservé au responsable des livraisons via une exception à la protection de branche.</li>
-<li><strong>Supprimer</strong> la branche <code>release/2026.2</code> : <code>git push origin --delete release/2026.2</code>. Le tag <code>v2026.2</code> reste.</li>
-</ol>
-
-<h2>Démarrer la livraison suivante avant la mise en production</h2>
+<h2>Report des correctifs</h2>
 <ul>
-<li>Les fonctionnalités de 2026.3 sont fusionnées dans <code>develop</code> comme les autres, derrière un flag désactivé : aucune branche supplémentaire.</li>
-<li>Si <code>release/2026.2</code> n'est pas encore coupée, elle contiendra ce code ; seuls les flags de 2026.2 sont activés.</li>
-<li>Les changements BD de 2026.3 (<code>modifications.sql</code>) doivent rester rétrocompatibles (expand/contract) : ajouter colonnes et tables sans rien supprimer ni renommer.</li>
-<li>Si 2026.2 exige une longue période d'acceptation, couper sa branche plus tôt et limiter la période de chevauchement à quelques semaines.</li>
-<li>Automatiser le report en cascade : un job CI fusionne <code>production</code> dans la release en acceptation, puis celle-ci dans <code>develop</code>, et ouvre une PR en cas de conflit. Jamais de report dans l'autre sens.</li>
+<li>Toujours vers l'aval : <code>production</code> → <code>release</code> (si elle existe) → <code>develop</code> → <code>develop/&lt;livraison&gt;</code> (si elle existe). Jamais dans l'autre sens.</li>
+<li>Reporter par <strong>fusion</strong> (merge), pas par cherry-pick : chaque branche contient alors tout l'historique de celle qui la précède, ce qui rend les renommages simples (voir ci-dessous).</li>
+<li>Automatiser : un job CI fusionne chaque branche dans la suivante et ouvre une PR en cas de conflit.</li>
+</ul>
+
+<h2>Renommer en pratique (Git)</h2>
+<p>Git ne renomme pas une branche distante : on déplace le nom vers le nouveau contenu, puis on supprime l'ancien nom. Si les reports se font par fusion, chaque déplacement est une <strong>avance rapide</strong>, sans force push.</p>
+<ol>
+<li><strong>develop → release</strong> : <code>git push origin origin/develop:refs/heads/release</code> (la branche <code>release</code> n'existe pas à ce moment).</li>
+<li><strong>develop/mai2027 → develop</strong> : vérifier qu'elle contient tout <code>develop</code> (<code>git log origin/develop/mai2027..origin/develop</code> est vide), puis <code>git push origin origin/develop/mai2027:develop</code> et <code>git push origin --delete develop/mai2027</code>.</li>
+<li><strong>release → production</strong> : vérifier que tous les hotfix ont été reportés (<code>git log origin/release..origin/production</code> est vide), puis <code>git push origin origin/release:production</code> et <code>git push origin --delete release</code>.</li>
+<li>Si une vérification n'est pas vide, reporter d'abord la branche manquante par fusion. En dernier recours seulement : <code>--force-with-lease</code>, réservé au responsable des livraisons.</li>
+<li>Prévenir les équipes : chacun fait <code>git fetch --prune</code> et repositionne ses branches locales suivies.</li>
+</ol>
+
+<h2>Fin des fonctionnalités avant le renommage en release</h2>
+<ul>
+<li><strong>La norme</strong> : toute fonctionnalité prévue pour la livraison est terminée, testée et intégrée dans <code>develop</code> avant le renommage <span class="badge">1</span>. Sa branche est alors supprimée.</li>
+<li>Pendant le développement, une fonctionnalité peut s'étaler sur plusieurs itérations : elle s'intègre à chaque fin d'itération derrière un feature flag désactivé.</li>
+<li>La release ne sert jamais à finir du développement : elle ne reçoit que des correctifs d'acceptation.</li>
+<li><strong>Exception, fonctionnalité en retard</strong> : décision explicite avant le renommage. Soit elle reste désactivée par son flag et sa branche se rebase sur la nouvelle <code>develop</code> (livraison suivante), soit le renommage est reporté.</li>
 </ul>
 
 <h2>Cycle d'une itération de 4 semaines</h2>
 <ol>
-<li><strong>En continu</strong> : fusionner <code>develop</code> dans sa branche au moins deux fois par semaine (job CI qui tente la fusion et alerte en cas de conflit).</li>
-<li><strong>Dernière semaine</strong> : stabiliser ce qui sera intégré ; vérifier que le flag de la fonctionnalité est bien désactivé par défaut.</li>
-<li><strong>Fin d'itération</strong> : PR de la feature vers <code>develop</code> avec tout ce qui est terminé et testé, même si la fonctionnalité est incomplète. La branche continue ensuite à partir de <code>develop</code> à jour.</li>
+<li><strong>En continu</strong> : fusionner la branche develop de sa livraison dans sa feature au moins deux fois par semaine.</li>
+<li><strong>Dernière semaine</strong> : stabiliser ce qui sera intégré ; vérifier que le flag est désactivé par défaut.</li>
+<li><strong>Fin d'itération</strong> : PR de la feature vers sa branche develop avec tout ce qui est terminé et testé.</li>
 </ol>
-
-<h2>Fonctionnalités qui débordent</h2>
-<ul>
-<li>Le débordement est normal : la branche continue dans l'itération suivante, aucune décision de dernière minute.</li>
-<li>Le code déjà intégré reste dans <code>develop</code>, désactivé par son flag. Il n'est jamais retiré à la veille d'une release.</li>
-<li>Train de livraison : la release des 6 mois embarque ce qui est prêt et activé. Le reste part dans la livraison suivante.</li>
-<li>Découper pour que chaque intégration soit sûre : changements BD, puis API .NET, puis écrans Angular masqués par un guard lié au flag.</li>
-</ul>
 
 <h2>Dépendances entre équipes</h2>
 <ul>
-<li><strong>Contrat d'abord</strong> : le contrat OpenAPI et les DTO sont fusionnés dans <code>develop</code> au début de l'itération, avant l'implémentation.</li>
+<li><strong>Contrat d'abord</strong> : le contrat OpenAPI et les DTO sont fusionnés dans la branche develop au début de l'itération, avant l'implémentation.</li>
 <li><strong>Client généré</strong> : client Angular généré (NSwag ou openapi-generator) ; l'équipe consommatrice travaille avec des mocks.</li>
-<li><strong>Feature flags partagés</strong> : Microsoft.FeatureManagement côté .NET, exposés par l'API et lus par un service ou une directive Angular.</li>
+<li><strong>Feature flags</strong> : Microsoft.FeatureManagement côté .NET, exposés par l'API et lus par un service ou une directive Angular.</li>
 <li><strong>Branch by abstraction</strong> pour remplacer de l'existant sans casser l'autre équipe.</li>
 </ul>
 
@@ -186,12 +203,12 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 
 <h2>Règles d'équipe</h2>
 <ul>
-<li>Aucune branche ne reste plus de 4 semaines sans être intégrée dans <code>develop</code>.</li>
-<li>Même pipeline CI sur les branches de fonctionnalité que sur <code>develop</code>.</li>
-<li>Sous-branches courtes révisées par PR vers la branche de fonctionnalité, pour garder des revues de taille raisonnable.</li>
-<li>Tout correctif de production est reporté vers l'aval jusqu'à <code>develop</code> le jour même ; les features le reçoivent à leur prochaine synchronisation.</li>
-<li>Au plus deux branches de livraison à la fois : <code>production</code> et une <code>release/*</code> en acceptation.</li>
-<li>Branche <code>production</code> protégée : aucune modification directe, seulement des PR de hotfix et le renommage à la livraison.</li>
+<li>Toutes les fonctionnalités d'une livraison sont terminées et intégrées dans <code>develop</code> avant son renommage en <code>release</code>.</li>
+<li>Une seule <code>release</code> à la fois : elle doit être renommée <code>production</code> avant que la <code>develop</code> suivante soit renommée <code>release</code>.</li>
+<li>Au plus une branche <code>develop/&lt;livraison&gt;</code> en parallèle de <code>develop</code>.</li>
+<li>Aucune feature ne reste plus de 4 semaines sans être intégrée dans sa branche develop.</li>
+<li>Correctifs reportés vers l'aval par fusion, le jour même.</li>
+<li><code>production</code>, <code>release</code> et <code>develop</code> sont protégées : seuls les PR et les renommages par le responsable des livraisons les modifient.</li>
 <li>Nettoyage des feature flags après chaque livraison.</li>
 </ul>
 </main>
