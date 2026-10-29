@@ -39,7 +39,7 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 <h1>Stratégie de branches par renommage</h1>
 <p class="sub">Application .NET Core + Angular · 3 équipes · itérations de 4 semaines · livraisons aux 6 mois · 1 équipe de correctifs en production</p>
 
-<div class="rule"><p><strong>Principe :</strong> les branches gardent des noms de rôle stables (<code>develop</code>, <code>release</code>, <code>production</code>). Une livraison avance d'un rôle à l'autre par renommage. Quand la livraison suivante démarre avant la fin de la courante, elle vit dans <code>develop/&lt;livraison&gt;</code> jusqu'à ce que <code>develop</code> se libère.</p></div>
+<div class="rule"><p>Une livraison avance par renommage : <code>develop</code> → <code>release</code> → <code>production</code>.</p></div>
 
 <h2>Schéma</h2>
 <div class="card">
@@ -136,80 +136,23 @@ ol,ul{padding-left:22px}li{margin:4px 0}
 </div>
 
 <h2>Les branches</h2>
-<div class="grid">
-<div class="box"><h3><span class="tag" style="background:#1D9E75"></span><code>production</code></h3><p>Ce qui tourne en production. Permanente, protégée. Écrasée à chaque livraison par <code>release</code>.</p></div>
-<div class="box"><h3><span class="tag" style="background:#BA7517"></span><code>release</code></h3><p>Livraison en acceptation. N'existe qu'entre le renommage de <code>develop</code> et la mise en production. Ne reçoit que des correctifs d'acceptation.</p></div>
-<div class="box"><h3><span class="tag" style="background:#7F77DD"></span><code>develop</code></h3><p>Livraison courante en développement. Les features de cette livraison y sont intégrées au moins à chaque fin d'itération.</p></div>
-<div class="box"><h3><span class="tag" style="background:#534AB7"></span><code>develop/&lt;livraison&gt;</code></h3><p>Livraison suivante qui démarre avant la fin de la courante. Tirée de <code>develop</code> et synchronisée avec elle. Devient <code>develop</code> au renommage.</p></div>
-<div class="box"><h3><span class="tag" style="background:#D4537E"></span><code>feature/*</code></h3><p>Une par fonctionnalité, tirée de la branche develop de sa livraison. Synchronisée deux fois par semaine, intégrée à chaque fin d'itération.</p></div>
-<div class="box"><h3><span class="tag" style="background:#D85A30"></span><code>hotfix/*</code></h3><p>Tirée de <code>production</code>, fusionnée dans celle-ci (nouveau tag), puis reportée vers l'aval jusqu'à la dernière branche develop.</p></div>
-</div>
-
-<h2>Cycle d'une livraison</h2>
-<ol>
-<li><strong>Développement</strong> : la livraison vit dans <code>develop</code>. Ses features s'y intègrent à chaque fin d'itération.</li>
-<li><strong>Chevauchement</strong> : si une équipe commence la livraison suivante, on crée <code>develop/mai2027</code> depuis <code>develop</code>. Elle reçoit tout ce qui entre dans <code>develop</code> (synchronisation au moins deux fois par semaine), jamais l'inverse.</li>
-<li><strong>Fin du développement</strong> : toutes les features de nov2026 sont terminées et intégrées. <code>develop</code> est renommée <code>release</code> <span class="badge">1</span>, puis <code>develop/mai2027</code> est renommée <code>develop</code> <span class="badge">2</span>. Les branches feature/* de mai2027 continuent sans changement : leur parent porte simplement un nouveau nom.</li>
-<li><strong>Acceptation</strong> : <code>release</code> ne reçoit que des correctifs, chacun reporté dans <code>develop</code>.</li>
-<li><strong>Livraison</strong> : tag <code>nov2026</code>, déploiement, puis <code>release</code> est renommée <code>production</code> <span class="badge">3</span>. Il n'y a plus de branche <code>release</code> jusqu'au prochain renommage.</li>
-</ol>
-
-<h2>Report des correctifs</h2>
 <ul>
-<li>Toujours vers l'aval : <code>production</code> → <code>release</code> (si elle existe) → <code>develop</code> → <code>develop/&lt;livraison&gt;</code> (si elle existe). Jamais dans l'autre sens.</li>
-<li>Reporter par <strong>fusion</strong> (merge), pas par cherry-pick : chaque branche contient alors tout l'historique de celle qui la précède, ce qui rend les renommages simples (voir ci-dessous).</li>
-<li>Automatiser : un job CI fusionne chaque branche dans la suivante et ouvre une PR en cas de conflit.</li>
+<li><code>production</code> : ce qui tourne en production.</li>
+<li><code>release</code> : livraison en acceptation.</li>
+<li><code>develop</code> : livraison courante en développement.</li>
+<li><code>develop/&lt;livraison&gt;</code> : livraison suivante, si elle démarre avant la fin de la courante.</li>
+<li><code>feature/*</code> : une fonctionnalité, tirée de la branche develop de sa livraison.</li>
+<li><code>hotfix/*</code> : correctif tiré de <code>production</code>.</li>
 </ul>
 
-<h2>Renommer en pratique (Git)</h2>
-<p>Git ne renomme pas une branche distante : on déplace le nom vers le nouveau contenu, puis on supprime l'ancien nom. Si les reports se font par fusion, chaque déplacement est une <strong>avance rapide</strong>, sans force push.</p>
-<ol>
-<li><strong>develop → release</strong> : <code>git push origin origin/develop:refs/heads/release</code> (la branche <code>release</code> n'existe pas à ce moment).</li>
-<li><strong>develop/mai2027 → develop</strong> : vérifier qu'elle contient tout <code>develop</code> (<code>git log origin/develop/mai2027..origin/develop</code> est vide), puis <code>git push origin origin/develop/mai2027:develop</code> et <code>git push origin --delete develop/mai2027</code>.</li>
-<li><strong>release → production</strong> : vérifier que tous les hotfix ont été reportés (<code>git log origin/release..origin/production</code> est vide), puis <code>git push origin origin/release:production</code> et <code>git push origin --delete release</code>.</li>
-<li>Si une vérification n'est pas vide, reporter d'abord la branche manquante par fusion. En dernier recours seulement : <code>--force-with-lease</code>, réservé au responsable des livraisons.</li>
-<li>Prévenir les équipes : chacun fait <code>git fetch --prune</code> et repositionne ses branches locales suivies.</li>
-</ol>
-
-<h2>Fin des fonctionnalités avant le renommage en release</h2>
+<h2>Règles</h2>
 <ul>
-<li><strong>La norme</strong> : toute fonctionnalité prévue pour la livraison est terminée, testée et intégrée dans <code>develop</code> avant le renommage <span class="badge">1</span>. Sa branche est alors supprimée.</li>
-<li>Pendant le développement, une fonctionnalité peut s'étaler sur plusieurs itérations : elle s'intègre à chaque fin d'itération derrière un feature flag désactivé.</li>
-<li>La release ne sert jamais à finir du développement : elle ne reçoit que des correctifs d'acceptation.</li>
-<li><strong>Exception, fonctionnalité en retard</strong> : décision explicite avant le renommage. Soit elle reste désactivée par son flag et sa branche se rebase sur la nouvelle <code>develop</code> (livraison suivante), soit le renommage est reporté.</li>
-</ul>
-
-<h2>Cycle d'une itération de 4 semaines</h2>
-<ol>
-<li><strong>En continu</strong> : fusionner la branche develop de sa livraison dans sa feature au moins deux fois par semaine.</li>
-<li><strong>Dernière semaine</strong> : stabiliser ce qui sera intégré ; vérifier que le flag est désactivé par défaut.</li>
-<li><strong>Fin d'itération</strong> : PR de la feature vers sa branche develop avec tout ce qui est terminé et testé.</li>
-</ol>
-
-<h2>Dépendances entre équipes</h2>
-<ul>
-<li><strong>Contrat d'abord</strong> : le contrat OpenAPI et les DTO sont fusionnés dans la branche develop au début de l'itération, avant l'implémentation.</li>
-<li><strong>Client généré</strong> : client Angular généré (NSwag ou openapi-generator) ; l'équipe consommatrice travaille avec des mocks.</li>
-<li><strong>Feature flags</strong> : Microsoft.FeatureManagement côté .NET, exposés par l'API et lus par un service ou une directive Angular.</li>
-<li><strong>Branch by abstraction</strong> pour remplacer de l'existant sans casser l'autre équipe.</li>
-</ul>
-
-<h2>Points chauds de conflit (.NET + Angular)</h2>
-<div class="grid">
-<div class="box"><h3>Changements BD</h3><p>Synchroniser les changements BD via le fichier <code>modifications.sql</code> avant de communiquer avec le responsable du modèle.</p></div>
-<div class="box"><h3>Fichiers partagés</h3><p>Routage Angular, <code>package-lock.json</code>, enregistrement DI dans <code>Program.cs</code>. Préférer des modules et routes en lazy loading par fonctionnalité.</p></div>
-<div class="box"><h3>Mises à jour de dépendances</h3><p>Versions d'Angular ou packages NuGet : tâche dédiée, fusionnée rapidement dans <code>develop</code>, jamais dans une branche de fonctionnalité.</p></div>
-</div>
-
-<h2>Règles d'équipe</h2>
-<ul>
-<li>Toutes les fonctionnalités d'une livraison sont terminées et intégrées dans <code>develop</code> avant son renommage en <code>release</code>.</li>
-<li>Une seule <code>release</code> à la fois : elle doit être renommée <code>production</code> avant que la <code>develop</code> suivante soit renommée <code>release</code>.</li>
-<li>Au plus une branche <code>develop/&lt;livraison&gt;</code> en parallèle de <code>develop</code>.</li>
-<li>Aucune feature ne reste plus de 4 semaines sans être intégrée dans sa branche develop.</li>
-<li>Correctifs reportés vers l'aval par fusion, le jour même.</li>
-<li><code>production</code>, <code>release</code> et <code>develop</code> sont protégées : seuls les PR et les renommages par le responsable des livraisons les modifient.</li>
-<li>Nettoyage des feature flags après chaque livraison.</li>
+<li>Les features sont terminées dans <code>develop</code> avant son renommage en <code>release</code>.</li>
+<li>Une seule <code>release</code> à la fois.</li>
+<li>Les features s'intègrent dans leur branche develop au moins à chaque fin d'itération.</li>
+<li><code>develop/&lt;livraison&gt;</code> se synchronise avec <code>develop</code> deux fois par semaine.</li>
+<li>Les correctifs descendent toujours : <code>production</code> → <code>release</code> → <code>develop</code> → <code>develop/&lt;livraison&gt;</code>.</li>
+<li>Changements BD : synchroniser via <code>modifications.sql</code> avant de communiquer avec le responsable du modèle.</li>
 </ul>
 </main>
 </body>
