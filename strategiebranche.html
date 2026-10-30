@@ -30,11 +30,11 @@ ul{padding-left:22px}li{margin:4px 0}
 <h1>Stratégie de branches Git</h1>
 <p class="sub">Application .NET Core + Angular · 3 équipes · itérations de 4 semaines · plusieurs livraisons en acceptation avant chaque mise en production · 1 équipe de correctifs en production</p>
 
-<div class="rule"><p><code>develop</code> porte la livraison de production en cours (2027.08). Elle livre plusieurs fois en acceptation dans la branche unique <code>release</code>, qui est renommée <code>production</code> à la mise en production. Les features de la livraison suivante (2028.02) partent de <code>develop/2028.02</code>.</p></div>
+<div class="rule"><p><code>develop</code> porte la livraison de production en cours (2027.08). À chaque livraison d'acceptation, la branche <code>release</code> est recréée depuis <code>develop</code>, toujours sous le même nom. La dernière est renommée <code>production</code>. Les features de la livraison suivante (2028.02) partent de <code>develop/2028.02</code>.</p></div>
 
 <h2>Schéma</h2>
 <div class="card">
-<svg viewBox="0 0 760 510" role="img" aria-label="develop est fusionnée deux fois dans la branche release pour deux livraisons d'acceptation, puis release est renommée production ; develop/2028.02 porte les features de la livraison suivante et est fusionnée dans develop après la mise en production">
+<svg viewBox="0 0 760 510" role="img" aria-label="release est créée depuis develop pour la livraison 1, passe en fin de vie, est recréée sous le même nom pour la livraison 2, puis renommée production ; develop/2028.02 porte les features de la livraison suivante et est fusionnée dans develop après la mise en production">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 
 <text class="lbl" x="740" y="12" text-anchor="end">temps →</text>
@@ -51,8 +51,10 @@ ul{padding-left:22px}li{margin:4px 0}
 <line x1="690" y1="40" x2="690" y2="60" stroke="#1D9E75" stroke-width="3"/>
 <path d="M680 150 C705 150 708 50 728 50 L740 50" fill="none" stroke="#1D9E75" stroke-width="2"/>
 
-<path d="M410 215 C422 185 426 150 442 150 L680 150" fill="none" stroke="#BA7517" stroke-width="2"/>
-<path d="M540 215 C548 190 553 168 562 157" fill="none" stroke="#5F5E5A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<path d="M410 215 C422 185 426 150 442 150 L530 150" fill="none" stroke="#BA7517" stroke-width="2"/>
+<line x1="530" y1="140" x2="530" y2="160" stroke="#BA7517" stroke-width="3"/>
+<path d="M540 215 C552 185 556 150 572 150 L680 150" fill="none" stroke="#BA7517" stroke-width="2"/>
+
 <path d="M452 150 C460 125 464 100 472 100 L476 100 C484 100 488 125 494 150" fill="none" stroke="#D85A30" stroke-width="1.5"/>
 <path d="M598 150 C604 125 607 100 613 100 L617 100 C623 100 626 125 632 150" fill="none" stroke="#D85A30" stroke-width="1.5"/>
 
@@ -110,9 +112,10 @@ ul{padding-left:22px}li{margin:4px 0}
 <text x="280" y="32" text-anchor="middle">v2027.02.1</text>
 <text class="lbl" x="690" y="32" text-anchor="middle">fin de vie</text>
 <text class="lbl" x="696" y="100" text-anchor="end" dominant-baseline="central">renommage</text>
-<text x="470" y="174" text-anchor="middle">livraison 1</text>
-<text x="604" y="174" text-anchor="middle">livraison 2</text>
-<g stroke="#BA7517" fill="var(--amber-f)"><circle cx="442" cy="150" r="5"/><circle cx="566" cy="150" r="5"/></g>
+<text x="470" y="174" text-anchor="middle">acceptation</text>
+<text x="604" y="174" text-anchor="middle">acceptation</text>
+<g stroke="#BA7517" fill="var(--amber-f)"><circle cx="442" cy="150" r="5"/><circle cx="572" cy="150" r="5"/></g>
+<text class="lbl" x="530" y="132" text-anchor="middle">fin de vie</text>
 <text x="654" y="174" text-anchor="start">v2027.08 (prod)</text>
 <text class="lbl" x="676" y="290" text-anchor="end">fusion</text>
 
@@ -132,7 +135,7 @@ ul{padding-left:22px}li{margin:4px 0}
 <h2>Les branches</h2>
 <ul>
 <li><code>production</code> : ce qui tourne en production.</li>
-<li><code>release</code> : branche unique d'acceptation. Chaque livraison d'acceptation y fusionne <code>develop</code>. Renommée <code>production</code> à la mise en production.</li>
+<li><code>release</code> : livraison en acceptation, toujours sous le même nom. Recréée depuis <code>develop</code> à chaque livraison ; la précédente passe en fin de vie (son tag reste). La dernière est renommée <code>production</code>.</li>
 <li><code>develop</code> : livraison de production en cours.</li>
 <li><code>develop/AAAA.MM</code> : livraison de production suivante (ex. <code>develop/2028.02</code>). Ses features en partent.</li>
 <li><code>feature</code> : une branche par fonctionnalité, tirée de la branche develop de sa livraison.</li>
@@ -141,7 +144,8 @@ ul{padding-left:22px}li{margin:4px 0}
 
 <h2>Règles</h2>
 <ul>
-<li>Les features prévues pour une livraison d'acceptation sont terminées dans <code>develop</code> avant d'être fusionnées dans <code>release</code>.</li>
+<li>Les features prévues pour une livraison d'acceptation sont terminées dans <code>develop</code> avant la création de <code>release</code>.</li>
+<li>Avant de recréer <code>release</code>, toutes ses corrections doivent être reportées dans <code>develop</code>.</li>
 <li>Une feature n'est fusionnée dans sa branche develop qu'une fois terminée. Exception : au début, le contrat ou le squelette (API, DTO) peut y être fusionné si une autre équipe en dépend.</li>
 <li>Les features de 2028.02 partent de <code>develop/2028.02</code>, jamais de <code>develop</code>.</li>
 <li><code>develop/2028.02</code> se synchronise avec <code>develop</code> deux fois par semaine, jamais l'inverse.</li>
