@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Branches par renommage</title>
+<title>Stratégie de branches Git</title>
 <style>
-:root{--bg:#faf9f5;--card:#ffffff;--text:#1f1e1d;--muted:#5f5e5a;--border:#e3e1d9;--purple-f:#EEEDFE;--teal-f:#E1F5EE;--coral-f:#FAECE7;--gray-f:#F1EFE8;--pink-f:#FBEAF0;--blue-f:#E6F1FB;--amber-f:#FAEEDA;--code:#f1efe8;--accent:#534AB7}
-@media (prefers-color-scheme:dark){:root{--bg:#1f1e1d;--card:#2a2927;--text:#f1efe8;--muted:#b4b2a9;--border:#444441;--purple-f:#3C3489;--teal-f:#085041;--coral-f:#712B13;--gray-f:#444441;--pink-f:#72243E;--blue-f:#0C447C;--amber-f:#633806;--code:#383735;--accent:#AFA9EC}}
+:root{--bg:#faf9f5;--card:#ffffff;--text:#1f1e1d;--muted:#5f5e5a;--border:#e3e1d9;--purple-f:#EEEDFE;--teal-f:#E1F5EE;--coral-f:#FAECE7;--pink-f:#FBEAF0;--blue-f:#E6F1FB;--amber-f:#FAEEDA;--code:#f1efe8;--accent:#534AB7}
+@media (prefers-color-scheme:dark){:root{--bg:#1f1e1d;--card:#2a2927;--text:#f1efe8;--muted:#b4b2a9;--border:#444441;--purple-f:#3C3489;--teal-f:#085041;--coral-f:#712B13;--pink-f:#72243E;--blue-f:#0C447C;--amber-f:#633806;--code:#383735;--accent:#AFA9EC}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.6}
 main{max-width:1000px;margin:0 auto;padding:40px 24px 56px}
@@ -19,139 +19,121 @@ svg{width:100%;min-width:600px;max-width:960px;margin:0 auto;height:auto;display
 svg text{fill:var(--text);font-size:12px;font-family:inherit}
 svg .lbl{fill:var(--muted)}
 svg .bold{font-size:14px;font-weight:600}
-svg .num{font-size:11px;font-weight:600;fill:#633806}
 code{background:var(--code);padding:1px 6px;border-radius:4px;font-size:.92em}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.box{border-radius:12px;padding:14px 16px;border:1px solid var(--border);background:var(--card)}
-.box h3{margin:0 0 6px;font-size:16px}
-.box p{margin:0;color:var(--muted);font-size:15px}
-.tag{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
 .rule{border:1px solid var(--accent);border-radius:12px;padding:14px 16px;background:var(--purple-f)}
 .rule p{margin:0}
-.key{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:6px}
-.key li{display:flex;gap:10px;align-items:flex-start;margin:0}
-.badge{flex:none;width:22px;height:22px;border-radius:50%;background:#FAEEDA;border:1px solid #BA7517;color:#633806;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
-ol,ul{padding-left:22px}li{margin:4px 0}
+ul{padding-left:22px}li{margin:4px 0}
 </style>
 </head>
 <body>
 <main>
-<h1>Stratégie de branches par renommage</h1>
-<p class="sub">Application .NET Core + Angular · 3 équipes · itérations de 4 semaines · livraisons aux 6 mois · 1 équipe de correctifs en production</p>
+<h1>Stratégie de branches Git</h1>
+<p class="sub">Application .NET Core + Angular · 3 équipes · itérations de 4 semaines · plusieurs livraisons en acceptation avant chaque mise en production · 1 équipe de correctifs en production</p>
 
-<div class="rule"><p>Une livraison avance par renommage : <code>develop</code> → <code>release</code> → <code>production</code>.</p></div>
+<div class="rule"><p><code>develop</code> porte la livraison de production en cours (2027.08). Elle produit plusieurs releases d'acceptation ; la dernière est renommée <code>production</code>. Les features de la livraison suivante (2028.02) partent de <code>develop/2028.02</code>.</p></div>
 
 <h2>Schéma</h2>
 <div class="card">
-<svg viewBox="0 0 760 500" role="img" aria-label="develop (nov2026) renommée release quand ses fonctionnalités sont terminées, develop/mai2027 renommée develop, release renommée production à la livraison ; correctifs reportés vers l'aval">
+<svg viewBox="0 0 760 490" role="img" aria-label="develop produit release 2027.08-1 puis 2027.08-2 ; la première passe en fin de vie, la seconde est renommée production ; develop/2028.02 porte les features de la livraison suivante et est fusionnée dans develop après la mise en production">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
 
-<g stroke="#B4B2A9" stroke-width="1" stroke-dasharray="3 4"><line x1="300" y1="22" x2="300" y2="410"/><line x1="450" y1="22" x2="450" y2="410"/><line x1="600" y1="22" x2="600" y2="410"/></g>
-<text class="lbl" x="225" y="12" text-anchor="middle">Itération 1</text>
-<text class="lbl" x="375" y="12" text-anchor="middle">Itération 2</text>
-<text class="lbl" x="525" y="12" text-anchor="middle">Itération 3</text>
-<text class="lbl" x="675" y="12" text-anchor="middle">Itération 4</text>
+<text class="lbl" x="740" y="12" text-anchor="end">temps →</text>
 
 <text class="bold" x="16" y="50" dominant-baseline="central">production</text>
 <text class="lbl" x="16" y="100" dominant-baseline="central">hotfix/*</text>
-<text class="bold" x="16" y="150" dominant-baseline="central">release</text>
+<text class="bold" x="16" y="150" dominant-baseline="central">release/*</text>
 <text class="bold" x="16" y="215" dominant-baseline="central">develop</text>
-<text class="lbl" x="16" y="275" dominant-baseline="central">feature/A (nov2026)</text>
-<text class="lbl" x="16" y="335" dominant-baseline="central">develop/mai2027</text>
-<text class="lbl" x="16" y="395" dominant-baseline="central">feature/B (mai2027)</text>
+<text class="lbl" x="16" y="275" dominant-baseline="central">feature/A (2027.08)</text>
+<text class="bold" x="16" y="335" dominant-baseline="central">develop/2028.02</text>
+<text class="lbl" x="16" y="395" dominant-baseline="central">feature/B (2028.02)</text>
 
-<line x1="150" y1="50" x2="630" y2="50" stroke="#1D9E75" stroke-width="2"/>
-<line x1="630" y1="40" x2="630" y2="60" stroke="#1D9E75" stroke-width="3"/>
+<line x1="150" y1="50" x2="650" y2="50" stroke="#1D9E75" stroke-width="2"/>
+<line x1="650" y1="40" x2="650" y2="60" stroke="#1D9E75" stroke-width="3"/>
 <path d="M640 150 C668 150 672 50 700 50 L740 50" fill="none" stroke="#1D9E75" stroke-width="2"/>
-<path d="M455 215 C468 185 474 150 492 150 L640 150" fill="none" stroke="#BA7517" stroke-width="2"/>
-<line x1="150" y1="215" x2="455" y2="215" stroke="#7F77DD" stroke-width="2.5"/>
-<path d="M300 215 C312 260 318 335 340 335 L470 335 C490 335 494 215 515 215 L740 215" fill="none" stroke="#534AB7" stroke-width="2.5"/>
 
-<path d="M220 50 C230 75 236 100 250 100 L260 100 C274 100 280 75 290 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
-<path d="M490 50 C500 75 506 100 520 100 L530 100 C544 100 550 75 560 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
+<path d="M410 215 C422 185 426 150 442 150 L530 150" fill="none" stroke="#BA7517" stroke-width="2"/>
+<line x1="530" y1="140" x2="530" y2="160" stroke="#BA7517" stroke-width="3"/>
+<path d="M540 215 C552 185 556 150 572 150 L640 150" fill="none" stroke="#BA7517" stroke-width="2"/>
 
-<path d="M170 215 C180 245 190 275 210 275 L440 275" fill="none" stroke="#D4537E" stroke-width="2"/>
-<path d="M330 335 C340 365 345 395 365 395 L740 395" fill="none" stroke="#378ADD" stroke-width="2"/>
+<line x1="150" y1="215" x2="740" y2="215" stroke="#7F77DD" stroke-width="2.5"/>
+<path d="M280 215 C292 260 298 335 320 335 L660 335" fill="none" stroke="#534AB7" stroke-width="2.5"/>
+<path d="M660 335 C680 335 686 270 690 223" fill="none" stroke="#5F5E5A" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+<path d="M190 50 C200 75 206 100 220 100 L230 100 C244 100 250 75 260 50" fill="none" stroke="#D85A30" stroke-width="1.5"/>
+
+<path d="M165 215 C175 245 185 275 205 275 L400 275" fill="none" stroke="#D4537E" stroke-width="2"/>
+<path d="M340 335 C350 365 355 395 375 395 L740 395" fill="none" stroke="#378ADD" stroke-width="2"/>
 
 <g stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3" fill="none">
-<path d="M262 106 L288 205" marker-end="url(#arrow)"/>
-<path d="M530 106 L546 142" marker-end="url(#arrow)"/>
-<path d="M554 158 L566 207" marker-end="url(#arrow)"/>
+<path d="M232 106 L252 207" marker-end="url(#arrow)"/>
+<path d="M458 156 L464 207" marker-end="url(#arrow)"/>
+<path d="M606 156 L614 207" marker-end="url(#arrow)"/>
 </g>
 
 <g stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3" fill="none">
-<path d="M228 221 L234 267" marker-end="url(#arrow)"/>
-<path d="M268 221 L274 267" marker-end="url(#arrow)"/>
-<path d="M378 221 L384 267" marker-end="url(#arrow)"/>
-<path d="M362 221 L366 327" marker-end="url(#arrow)"/>
-<path d="M418 221 L422 327" marker-end="url(#arrow)"/>
-<path d="M396 341 L400 387" marker-end="url(#arrow)"/>
-<path d="M560 221 L566 387" marker-end="url(#arrow)"/>
-<path d="M664 221 L670 387" marker-end="url(#arrow)"/>
+<path d="M212 221 L218 267" marker-end="url(#arrow)"/>
+<path d="M300 221 L306 267" marker-end="url(#arrow)"/>
+<path d="M326 221 L330 327" marker-end="url(#arrow)"/>
+<path d="M456 221 L460 327" marker-end="url(#arrow)"/>
+<path d="M584 221 L588 327" marker-end="url(#arrow)"/>
+<path d="M392 341 L396 387" marker-end="url(#arrow)"/>
+<path d="M520 341 L524 387" marker-end="url(#arrow)"/>
 <path d="M716 221 L722 387" marker-end="url(#arrow)"/>
 </g>
 
 <g stroke="#5F5E5A" stroke-width="1.8" fill="none">
-<path d="M290 269 L296 223" marker-end="url(#arrow)"/>
-<path d="M436 269 L442 223" marker-end="url(#arrow)"/>
-<path d="M446 389 L450 343" marker-end="url(#arrow)"/>
-<path d="M604 389 L608 223" marker-end="url(#arrow)"/>
+<path d="M262 269 L268 223" marker-end="url(#arrow)"/>
+<path d="M394 269 L400 223" marker-end="url(#arrow)"/>
+<path d="M436 389 L440 343" marker-end="url(#arrow)"/>
+<path d="M566 389 L570 343" marker-end="url(#arrow)"/>
 </g>
 
-<g stroke="#7F77DD" fill="var(--purple-f)"><circle cx="170" cy="215" r="6"/><circle cx="300" cy="215" r="6"/></g>
-<g stroke="#534AB7" fill="var(--purple-f)"><circle cx="640" cy="215" r="6"/></g>
-<g stroke="#1D9E75" fill="var(--teal-f)"><circle cx="170" cy="50" r="8"/><circle cx="290" cy="50" r="7"/><circle cx="560" cy="50" r="7"/></g>
-<g stroke="#D85A30" fill="var(--coral-f)"><circle cx="255" cy="100" r="6"/><circle cx="525" cy="100" r="6"/></g>
-<g stroke="#BA7517" fill="var(--amber-f)"><circle cx="520" cy="150" r="5"/><circle cx="640" cy="150" r="8"/></g>
-<g stroke="#D4537E" fill="var(--pink-f)"><circle cx="245" cy="275" r="5"/><circle cx="335" cy="275" r="5"/><circle cx="400" cy="275" r="5"/></g>
-<g stroke="#378ADD" fill="var(--blue-f)"><circle cx="420" cy="395" r="5"/><circle cx="530" cy="395" r="5"/><circle cx="640" cy="395" r="5"/><circle cx="690" cy="395" r="5"/></g>
+<g stroke="#7F77DD" fill="var(--purple-f)"><circle cx="165" cy="215" r="6"/><circle cx="280" cy="215" r="6"/><circle cx="410" cy="215" r="7"/><circle cx="540" cy="215" r="7"/></g>
+<g stroke="#1D9E75" fill="var(--teal-f)"><circle cx="170" cy="50" r="8"/><circle cx="260" cy="50" r="7"/></g>
+<circle cx="225" cy="100" r="6" stroke="#D85A30" fill="var(--coral-f)"/>
+<g stroke="#BA7517" fill="var(--amber-f)"><circle cx="456" cy="150" r="5"/><circle cx="600" cy="150" r="5"/><circle cx="640" cy="150" r="8"/></g>
+<g stroke="#D4537E" fill="var(--pink-f)"><circle cx="240" cy="275" r="5"/><circle cx="350" cy="275" r="5"/></g>
+<g stroke="#378ADD" fill="var(--blue-f)"><circle cx="410" cy="395" r="5"/><circle cx="480" cy="395" r="5"/><circle cx="620" cy="395" r="5"/><circle cx="680" cy="395" r="5"/></g>
 
-<g stroke="#BA7517" stroke-width="1" fill="var(--amber-f)"><circle cx="440" cy="172" r="10"/><circle cx="530" cy="250" r="10"/><circle cx="690" cy="108" r="10"/></g>
-<text class="num" x="440" y="172" text-anchor="middle" dominant-baseline="central">1</text>
-<text class="num" x="530" y="250" text-anchor="middle" dominant-baseline="central">2</text>
-<text class="num" x="690" y="108" text-anchor="middle" dominant-baseline="central">3</text>
+<text x="170" y="32" text-anchor="middle">v2027.02 (prod)</text>
+<text x="280" y="32" text-anchor="middle">v2027.02.1</text>
+<text class="lbl" x="650" y="32" text-anchor="middle">fin de vie</text>
+<text class="lbl" x="676" y="100" dominant-baseline="central">renommage</text>
+<text x="476" y="132" text-anchor="middle">2027.08-1</text>
+<text x="590" y="132" text-anchor="middle">2027.08-2</text>
+<text class="lbl" x="527" y="174" text-anchor="end">fin de vie</text>
+<text x="650" y="176" text-anchor="start">v2027.08 (prod)</text>
+<text class="lbl" x="676" y="290" text-anchor="end">fusion</text>
 
-<text x="170" y="32" text-anchor="middle">mai2026 (prod)</text>
-<text x="290" y="32" text-anchor="middle">mai2026.1</text>
-<text x="560" y="32" text-anchor="middle">mai2026.2</text>
-<text class="lbl" x="630" y="32" text-anchor="middle">fin de vie</text>
-<text x="640" y="172" text-anchor="middle">nov2026 (prod)</text>
-<text class="lbl" x="520" y="168" text-anchor="middle">acceptation</text>
-
-<line x1="16" y1="448" x2="52" y2="448" stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3"/>
-<text x="60" y="448" dominant-baseline="central">Synchronisation vers l'aval (2×/semaine)</text>
-<line x1="400" y1="448" x2="436" y2="448" stroke="#5F5E5A" stroke-width="1.8"/>
-<text x="444" y="448" dominant-baseline="central">Intégration d'une feature</text>
-<line x1="16" y1="476" x2="52" y2="476" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="60" y="476" dominant-baseline="central">Correctif reporté vers l'aval</text>
-<circle cx="418" cy="476" r="9" stroke="#BA7517" stroke-width="1" fill="var(--amber-f)"/>
-<text class="num" x="418" y="476" text-anchor="middle" dominant-baseline="central">n</text>
-<text x="444" y="476" dominant-baseline="central">Renommage (voir ci-dessous)</text>
+<line x1="16" y1="440" x2="52" y2="440" stroke="#7F77DD" stroke-width="1.2" stroke-dasharray="4 3"/>
+<text x="60" y="440" dominant-baseline="central">Synchronisation vers l'aval (2×/semaine)</text>
+<line x1="400" y1="440" x2="436" y2="440" stroke="#5F5E5A" stroke-width="1.8"/>
+<text x="444" y="440" dominant-baseline="central">Intégration d'une feature ou fusion</text>
+<line x1="16" y1="466" x2="52" y2="466" stroke="#D85A30" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text x="60" y="466" dominant-baseline="central">Correctif reporté vers l'aval</text>
+<line x1="418" y1="458" x2="418" y2="474" stroke="#5F5E5A" stroke-width="3"/>
+<text x="444" y="466" dominant-baseline="central">Fin de vie d'une branche</text>
 </svg>
-<ol class="key">
-<li><span class="badge">1</span><span>Les fonctionnalités de nov2026 sont terminées : <code>develop</code> est renommée <code>release</code> et entre en acceptation.</span></li>
-<li><span class="badge">2</span><span><code>develop/mai2027</code> est renommée <code>develop</code> : la livraison suivante devient la livraison courante.</span></li>
-<li><span class="badge">3</span><span>nov2026 est livrée : <code>release</code> est renommée <code>production</code> et écrase l'ancienne. mai2026 ne reste accessible que par ses tags.</span></li>
-</ol>
 </div>
 
 <h2>Les branches</h2>
 <ul>
 <li><code>production</code> : ce qui tourne en production.</li>
-<li><code>release</code> : livraison en acceptation.</li>
-<li><code>develop</code> : livraison courante en développement.</li>
-<li><code>develop/&lt;livraison&gt;</code> : livraison suivante, si elle démarre avant la fin de la courante.</li>
+<li><code>release/AAAA.MM-n</code> : livraison en acceptation, créée depuis <code>develop</code>. Plusieurs par livraison de production ; chacune passe en fin de vie à la création de la suivante. La dernière est renommée <code>production</code>.</li>
+<li><code>develop</code> : livraison de production en cours.</li>
+<li><code>develop/AAAA.MM</code> : livraison de production suivante (ex. <code>develop/2028.02</code>). Ses features en partent.</li>
 <li><code>feature/*</code> : une fonctionnalité, tirée de la branche develop de sa livraison.</li>
 <li><code>hotfix/*</code> : correctif tiré de <code>production</code>.</li>
 </ul>
 
 <h2>Règles</h2>
 <ul>
-<li>Les features sont terminées dans <code>develop</code> avant son renommage en <code>release</code>.</li>
-<li>Une seule <code>release</code> à la fois.</li>
-<li>Les features s'intègrent dans leur branche develop au moins à chaque fin d'itération.</li>
-<li><code>develop/&lt;livraison&gt;</code> se synchronise avec <code>develop</code> deux fois par semaine.</li>
-<li>Les correctifs descendent toujours : <code>production</code> → <code>release</code> → <code>develop</code> → <code>develop/&lt;livraison&gt;</code>.</li>
+<li>Les features prévues pour une release sont terminées dans <code>develop</code> avant sa création.</li>
+<li>Une seule <code>release/*</code> active à la fois.</li>
+<li>Les features de 2028.02 partent de <code>develop/2028.02</code>, jamais de <code>develop</code>.</li>
+<li><code>develop/2028.02</code> se synchronise avec <code>develop</code> deux fois par semaine, jamais l'inverse.</li>
+<li>Après la mise en production de 2027.08, <code>develop/2028.02</code> est fusionnée dans <code>develop</code> puis supprimée.</li>
+<li>Les correctifs descendent toujours : <code>production</code> → <code>release/*</code> → <code>develop</code> → <code>develop/2028.02</code>.</li>
 <li>Changements BD : synchroniser via <code>modifications.sql</code> avant de communiquer avec le responsable du modèle.</li>
 </ul>
 </main>
