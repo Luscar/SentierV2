@@ -4,11 +4,14 @@ Process manager léger et autonome, implémentant [SPEC.md](SPEC.md) (aucune dé
 
 ```
 src/ProcessManager/
-  ProcessusBase.cs     ProcessusBase, Processus<TEtat> : Raise, Correler, TacheUser, Attendre, Appeler, Terminer
+  ProcessusBase.cs     ProcessusBase : Raise, Correler, TacheUser, Attendre, Appeler, Terminer
+  Processus.cs         Processus<TEtat> : état typé sérialisé en JSON
+  Suite.cs, Suspension.cs, Appel.cs, Fin.cs   suites déclarées (internes)
   MoteurProcessus.cs   Demarrer, Signaler (id ou type + clé), Abandonner, Tick
   Handlers.cs          résolution des Handle par réflexion (cache par couple processus/événement)
-  InstanceProcessus.cs instance persistée + statuts
-  Evenements.cs        DelaiExpire, AttenteAbandonnee, SousProcessusTermine, ProcessusException
+  InstanceProcessus.cs instance persistée ; StatutProcessus.cs : statuts
+  DelaiExpire.cs, AttenteAbandonnee.cs, SousProcessusTermine.cs   événements fournis
+  ProcessusException.cs  erreur d'utilisation de la couche
   I*.cs                ports : IHorloge (+ HorlogeSysteme), IUniteDeTravail, IFabriqueProcessus, IStoreInstances
 tests/ProcessManager.Tests/
   Exemple/             DeclarationOriginale (plusieurs tâches/attentes) + sous-processus Signature

@@ -2,8 +2,6 @@ using ProcessManager;
 
 namespace ProcessManager.Tests.Exemple;
 
-public sealed record SignatureRecue;
-
 /// <summary>Sous-processus réutilisable seul : demande une signature et attend 10 jours.</summary>
 public sealed class Signature(IBusCommandes commandes) : ProcessusBase
 {

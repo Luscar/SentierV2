@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Sentier.Variables;
 
 /// <summary>
@@ -168,56 +166,5 @@ public sealed class VariablesProcessus : IVariablesLecture
     {
         var types = declarations.ToDictionary(d => d.Key, d => d.Value.Type);
         return new VariablesProcessus(declarations, serialiseur.Deserialiser(json, types));
-    }
-}
-
-/// <summary>Sérialiseur par défaut, basé sur <c>System.Text.Json</c>.</summary>
-public sealed class SerialiseurVariablesJson : ISerialiseurVariables
-{
-    private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
-
-    /// <inheritdoc />
-    public string Serialiser(IReadOnlyDictionary<string, object?> valeurs)
-        => JsonSerializer.Serialize(valeurs, Options);
-
-    /// <inheritdoc />
-    public Dictionary<string, object?> Deserialiser(string? json, IReadOnlyDictionary<string, TypeVariable> types)
-    {
-        var resultat = new Dictionary<string, object?>();
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return resultat;
-        }
-
-        using var document = JsonDocument.Parse(json);
-        foreach (var propriete in document.RootElement.EnumerateObject())
-        {
-            var type = types.TryGetValue(propriete.Name, out var declare)
-                ? declare
-                : VariablesProcessus.EstReserve(propriete.Name) ? TypeVariable.Texte : TypeVariable.Json;
-            resultat[propriete.Name] = ConvertisseurValeurs.DepuisJson(type, propriete.Value, propriete.Name);
-        }
-
-        return resultat;
-    }
-}
-
-/// <summary>Valeurs de variables à fournir au démarrage, écrites avec les constantes typées.</summary>
-/// <example><code>ValeursVariables.Avec(NbJours, 5L).Avec(Motif, "Vacances")</code></example>
-public sealed class ValeursVariables : Dictionary<string, object?>
-{
-    /// <summary>Crée un ensemble de valeurs vide.</summary>
-    public ValeursVariables() : base(StringComparer.Ordinal)
-    {
-    }
-
-    /// <summary>Crée un ensemble de valeurs avec une première variable.</summary>
-    public static ValeursVariables Avec<T>(Variable<T> variable, T valeur) => new ValeursVariables().Et(variable, valeur);
-
-    /// <summary>Ajoute la valeur d'une variable.</summary>
-    public ValeursVariables Et<T>(Variable<T> variable, T valeur)
-    {
-        this[variable.Nom] = valeur;
-        return this;
     }
 }
