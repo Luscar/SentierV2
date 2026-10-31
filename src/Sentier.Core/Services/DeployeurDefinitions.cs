@@ -20,7 +20,7 @@ internal sealed class DeployeurDefinitions(
     IDepotInstances instances,
     FournisseurDefinitions fournisseur,
     ServiceMigration migration,
-    IHorloge horloge)
+    IHorlogeSentier horloge)
 {
     private readonly ILogger _logger = services.GetService<ILogger<DeployeurDefinitions>>() ?? (ILogger)NullLogger.Instance;
 
@@ -100,9 +100,9 @@ internal sealed class DeployeurDefinitions(
             }
         }
 
-        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && !EstEnregistre<IGestionnaireTaches>())
+        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && !EstEnregistre<IGestionnaireTachesSentier>())
         {
-            erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTaches, et aucun n'est enregistré.");
+            erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTachesSentier, et aucun n'est enregistré.");
         }
 
         foreach (var sousProcessus in definition.Noeuds.OfType<NoeudSousProcessus>())

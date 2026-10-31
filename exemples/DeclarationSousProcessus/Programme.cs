@@ -25,7 +25,7 @@ services.AddSentier(o =>
     o.UtiliserSqlite();
     o.BalayerAssemblyDe<TraitementDeclaration>();     // définitions, commandes, requêtes, gestionnaire de tâches
 });
-services.AddSingleton<IHorloge>(horloge);
+services.AddSingleton<IHorlogeSentier>(horloge);
 services.AddSingleton<IDossiersDeclarations>(simulateur);
 services.AddSingleton<IServiceIdentification>(simulateur);
 services.AddSingleton<IServiceConformite>(simulateur);
@@ -114,7 +114,7 @@ async Task<T> Transaction<T>(Func<IServiceProvider, Task<T>> action)
 {
     using var portee = fournisseur.CreateScope();
     using var transaction = connexion.BeginTransaction();
-    portee.ServiceProvider.GetRequiredService<IAccesseurTransaction>().Transaction = transaction;
+    portee.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;
     var retour = await action(portee.ServiceProvider);
     transaction.Commit();
     return retour;

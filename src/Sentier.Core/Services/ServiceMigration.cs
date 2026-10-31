@@ -27,7 +27,7 @@ internal sealed class ServiceMigration(
     MoteurSentier moteur,
     PlanificateurAttentes planificateur,
     ExecuteurAppels appels,
-    IHorloge horloge)
+    IHorlogeSentier horloge)
 {
     private readonly ILogger _logger = services.GetService<ILogger<ServiceMigration>>() ?? (ILogger)NullLogger.Instance;
 

@@ -7,5 +7,5 @@ namespace Sentier.Commandes;
 public interface ICommandeSentier
 {
     /// <summary>Exécute la commande.</summary>
-    Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct);
+    Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct);
 }

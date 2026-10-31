@@ -13,7 +13,7 @@ internal sealed class SuiviSentier(
     IDepotInstances instances,
     IDepotHistorique historique,
     IDepotAttentes attentes,
-    ISerialiseurVariables serialiseur) : ISuiviSentier
+    ISerialiseurVariablesSentier serialiseur) : ISuiviSentier
 {
     /// <summary>Taille d'un lot de candidats lu en base pendant une recherche par variables.</summary>
     private const int TailleLotRecherche = 200;

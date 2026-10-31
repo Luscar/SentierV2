@@ -3,7 +3,7 @@ using Sentier.Definitions;
 namespace Sentier.Execution.Executeurs;
 
 /// <summary>Interactif : commandes d'entrée, création de la tâche ; à la complétion, fusion des données et commandes de sortie.</summary>
-internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horloge) : IExecuteurNoeud
+internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorlogeSentier horloge) : IExecuteurNoeud
 {
     public TypeNoeud Type => TypeNoeud.Interactif;
 

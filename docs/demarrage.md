@@ -26,7 +26,7 @@ Ce guide mène une application cliente de l'installation au premier processus ex
 | **La transaction appartient au client.** Sentier n'ouvre, ne valide et n'annule jamais de transaction. | Chaque appel qui écrit se fait dans une transaction ouverte par l'application ; c'est elle qui fait `Commit` ou `Rollback`. |
 | **Exécution synchrone.** Les nœuds s'enchaînent dans l'appel jusqu'à une fin, une attente, une tâche ou un sous-processus. | Au retour de `DemarrerAsync`, l'instance est déjà rendue à son prochain arrêt. |
 | **Une instance = un processus + une clé d'affaire** (`long`). | Choisir la clé d'affaire de chaque processus (n° de dossier, de demande…). |
-| **Le client garde ses tâches.** Sentier ne stocke aucune tâche utilisateur. | Implémenter `IGestionnaireTaches` dès qu'un processus a un nœud interactif. |
+| **Le client garde ses tâches.** Sentier ne stocke aucune tâche utilisateur. | Implémenter `IGestionnaireTachesSentier` dès qu'un processus a un nœud interactif. |
 | **Aucun thread.** Sentier ne lance rien en arrière-plan. | Les échéances sont traitées par un batch du client. |
 
 ## 2. Installer les packages
@@ -67,7 +67,7 @@ builder.RegisterModule(new ModuleSentier(o => o
     .BalayerAssemblyDe<Program>()));        // définitions, commandes, requêtes, gestionnaire de tâches
 
 // Services optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
-builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateur>().InstancePerLifetimeScope();
+builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
 
 _container = builder.Build();
 ```
@@ -88,7 +88,7 @@ Dans les assemblys indiqués par `BalayerAssemblyDe<T>()` (à appeler une fois p
 - les définitions de processus (`DefinitionSentier` avec `[ProcessusSentier]`) ;
 - les commandes (`ICommandeSentier`) et requêtes (`IRequeteSentier`), enregistrées en Scoped ;
 - les plans de migration (`IPlanMigration`) ;
-- l'implémentation de `IGestionnaireTaches` (s'il y en a plusieurs : `o.UtiliserGestionnaireTaches<T>()`).
+- l'implémentation de `IGestionnaireTachesSentier` (s'il y en a plusieurs : `o.UtiliserGestionnaireTaches<T>()`).
 
 Options utiles : `MaxEtapesParExecution` (1000 par défaut, protège des boucles infinies), `MigrationAutomatique()` (voir le README, § 7).
 
@@ -131,7 +131,7 @@ Points à retenir :
 - `ExternallyOwned()` : la portée ne doit pas disposer la connexion ni la transaction du client.
 - Si l'application a déjà une unité de travail (même connexion pour ses propres dépôts), enregistrer **sa** connexion et **sa** transaction : les écritures de Sentier et de l'application sont alors validées ensemble.
 - Dans une application web, ce code va dans un middleware ou un filtre qui crée la portée de chaque requête.
-- Avec `Microsoft.Extensions.DependencyInjection`, alimenter plutôt `IAccesseurTransaction` dans la portée (voir le README, § 2).
+- Avec `Microsoft.Extensions.DependencyInjection`, alimenter plutôt `IAccesseurTransactionSentier` dans la portée (voir le README, § 2).
 
 ### Variante Oracle : transaction ambiante (`TransactionScope`)
 
@@ -190,7 +190,7 @@ Les nœuds disponibles : `Systemique` (une commande), `Decision` (requêtes), `I
 ```csharp
 public sealed class CalculerSolde(IDepotEmployes employes) : ICommandeSentier
 {
-    public async Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct)
+    public async Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct)
     {
         var solde = await employes.SoldeAsync(contexte.CleAffaire, ct);
         contexte.Variables.Ecrire(DemandeConge.Solde, solde);
@@ -201,7 +201,7 @@ public sealed class ParametresSolde { public long NbJours { get; set; } public l
 
 public sealed class SoldeSuffisant : RequeteSentier<ParametresSolde>
 {
-    protected override Task<bool> EvaluerAsync(ContexteRequete contexte, ParametresSolde p, CancellationToken ct)
+    protected override Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, ParametresSolde p, CancellationToken ct)
         => Task.FromResult(p.NbJours <= p.Solde);
 }
 ```
@@ -213,7 +213,7 @@ Les paramètres d'une requête typée sont liés **par nom** : `p.Variables(NbJo
 Obligatoire dès qu'un processus contient un nœud `Interactif` (sinon le déploiement échoue). Sentier appelle le gestionnaire ; l'application garde ses tâches où elle veut (sa table, un service externe…).
 
 ```csharp
-public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
+public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTachesSentier
 {
     public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
         => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.NomTache, demande.Role, ct);
@@ -330,7 +330,7 @@ Même code qu'en production, seul le dialecte change. Une base en mémoire parta
 ```csharp
 var builder = new ContainerBuilder();
 builder.RegisterModule(new ModuleSentier(o => o.UtiliserSqlite("SENTIER").BalayerAssemblyDe<DemandeConge>()));
-builder.RegisterType<TachesEnMemoire>().As<IGestionnaireTaches>().InstancePerLifetimeScope();
+builder.RegisterType<TachesEnMemoire>().As<IGestionnaireTachesSentier>().InstancePerLifetimeScope();
 var container = builder.Build();
 
 using var connexion = new SqliteConnection("Data Source=tests;Mode=Memory;Cache=Shared");
@@ -367,20 +367,20 @@ Les dates SQLite sont stockées en texte et les clés étrangères ne sont véri
 - [ ] Une unité de travail qui enregistre `IDbConnection` et `IDbTransaction` dans la portée, puis valide.
 - [ ] Une classe `DefinitionSentier` par processus, avec `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.
-- [ ] `IGestionnaireTaches` implémenté si un processus a un nœud interactif.
+- [ ] `IGestionnaireTachesSentier` implémenté si un processus a un nœud interactif.
 - [ ] `DeployerDefinitionsAsync` appelé au démarrage et son rapport journalisé.
 - [ ] Batch des échéances planifié si un processus a une échéance.
-- [ ] (Facultatif) `IContexteUtilisateur` pour l'audit.
+- [ ] (Facultatif) `IContexteUtilisateurSentier` pour l'audit.
 
 ## Erreurs fréquentes
 
 | Symptôme | Cause | Correction |
 |---|---|---|
-| `TransactionRequiseException` | Aucune transaction dans la portée, ou déjà validée. | Enregistrer `IDbTransaction` dans la portée (ou alimenter `IAccesseurTransaction`) avant d'appeler le service. |
+| `TransactionRequiseException` | Aucune transaction dans la portée, ou déjà validée. | Enregistrer `IDbTransaction` dans la portée (ou alimenter `IAccesseurTransactionSentier`) avant d'appeler le service. |
 | « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine. | Résoudre `IServiceSentier` depuis la portée de l'unité de travail. |
 | `DefinitionInvalideException` | Définition incohérente (code en double, nœud inatteignable, décision sans « sinon »…). | Lire la liste d'erreurs de l'exception. |
 | Le déploiement échoue sur une commande ou une requête inconnue | Classe hors des assemblys balayés. | Ajouter `BalayerAssemblyDe<UneClasseDeCetAssembly>()`. |
-| Le déploiement échoue sur un nœud interactif | Aucun `IGestionnaireTaches`. | L'implémenter dans un assembly balayé, ou `UtiliserGestionnaireTaches<T>()`. |
+| Le déploiement échoue sur un nœud interactif | Aucun `IGestionnaireTachesSentier`. | L'implémenter dans un assembly balayé, ou `UtiliserGestionnaireTaches<T>()`. |
 | `VariableInvalideException` au démarrage | Variable passée au démarrage mais non déclarée dans la définition. | La déclarer comme champ `Variable<T>` statique. |
 | Démarrage `SansEffet` | Instance déjà active pour ce processus et cette clé. | Normal ; `InstancesMultiples()` dans la définition pour lever la règle. |
 | Connexion ou transaction disposée à la fin de la portée | Enregistrée sans `ExternallyOwned()` : Autofac la dispose avec la portée. | Ajouter `ExternallyOwned()`. |

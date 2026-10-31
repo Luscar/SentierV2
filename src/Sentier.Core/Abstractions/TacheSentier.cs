@@ -1,6 +1,6 @@
 namespace Sentier;
 
-/// <summary>Tâche utilisateur telle que la voit Sentier, fournie par le <see cref="IGestionnaireTaches"/> du client.</summary>
+/// <summary>Tâche utilisateur telle que la voit Sentier, fournie par le <see cref="IGestionnaireTachesSentier"/> du client.</summary>
 public sealed class TacheSentier
 {
     /// <summary>Identifiant de la tâche chez le client.</summary>

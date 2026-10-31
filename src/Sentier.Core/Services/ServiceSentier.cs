@@ -15,7 +15,7 @@ internal sealed class ServiceSentier(
     IDepotAttentes attentes,
     DeployeurDefinitions deployeur,
     ServiceMigration migration,
-    IHorloge horloge) : IServiceSentier
+    IHorlogeSentier horloge) : IServiceSentier
 {
     public async Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, string? utilisateur = null, CancellationToken ct = default)
     {

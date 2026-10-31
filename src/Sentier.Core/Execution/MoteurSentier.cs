@@ -19,7 +19,7 @@ internal sealed class MoteurSentier
     private readonly IDepotInstances _instances;
     private readonly IDepotHistorique _historique;
     private readonly IDepotAttentes _attentes;
-    private readonly ISerialiseurVariables _serialiseur;
+    private readonly ISerialiseurVariablesSentier _serialiseur;
     private readonly OptionsSentier _options;
     private readonly ILogger _logger;
     private readonly Dictionary<TypeNoeud, IExecuteurNoeud> _executeurs;
@@ -34,8 +34,8 @@ internal sealed class MoteurSentier
         IDepotHistorique historique,
         IDepotAttentes attentes,
         IEnumerable<IExecuteurNoeud> executeurs,
-        ISerialiseurVariables serialiseur,
-        IHorloge horloge,
+        ISerialiseurVariablesSentier serialiseur,
+        IHorlogeSentier horloge,
         OptionsSentier options)
     {
         _services = services;
@@ -56,16 +56,16 @@ internal sealed class MoteurSentier
 
     internal FournisseurDefinitions Definitions { get; }
 
-    internal IHorloge Horloge { get; }
+    internal IHorlogeSentier Horloge { get; }
 
-    internal string? UtilisateurCourant => _services.GetService<IContexteUtilisateur>()?.Utilisateur;
+    internal string? UtilisateurCourant => _services.GetService<IContexteUtilisateurSentier>()?.Utilisateur;
 
     /// <summary>Gestionnaire de tâches du client ; lève une erreur s'il n'est pas enregistré.</summary>
-    internal IGestionnaireTaches Taches => TachesOptionnelles
-        ?? throw new SentierException("Aucun IGestionnaireTaches n'est enregistré : un nœud interactif ne peut pas gérer de tâche.");
+    internal IGestionnaireTachesSentier Taches => TachesOptionnelles
+        ?? throw new SentierException("Aucun IGestionnaireTachesSentier n'est enregistré : un nœud interactif ne peut pas gérer de tâche.");
 
     /// <summary>Gestionnaire de tâches du client, ou <c>null</c> : sans gestionnaire, aucune tâche n'a pu être créée.</summary>
-    internal IGestionnaireTaches? TachesOptionnelles => _services.GetService<IGestionnaireTaches>();
+    internal IGestionnaireTachesSentier? TachesOptionnelles => _services.GetService<IGestionnaireTachesSentier>();
 
     internal VariablesProcessus ChargerVariables(InstanceProcessus instance, DefinitionProcessus definition)
         => VariablesProcessus.Charger(definition.Declarations, _serialiseur, instance.VariablesJson);

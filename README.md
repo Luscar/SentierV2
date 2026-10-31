@@ -49,15 +49,15 @@ builder.RegisterModule(new ModuleSentier(o => o
 _container = builder.Build();
 ```
 
-`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Avec Autofac, le gestionnaire de tâches vient du balayage ou de `UtiliserGestionnaireTaches<T>()`. Un service enregistré dans le `ContainerBuilder` **après** le module (`IHorloge`, `IContexteUtilisateur`…) remplace celui de Sentier.
+`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Avec Autofac, le gestionnaire de tâches vient du balayage ou de `UtiliserGestionnaireTaches<T>()`. Un service enregistré dans le `ContainerBuilder` **après** le module (`IHorlogeSentier`, `IContexteUtilisateurSentier`…) remplace celui de Sentier.
 
-`AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateur` (utilisateur courant, pour l'audit), `IIntercepteurCommande`, `IIntercepteurRequete`, et un `IHorloge` ou `ISerialiseurVariables` personnalisé.
+`AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateurSentier` (utilisateur courant, pour l'audit), `IIntercepteurCommandeSentier`, `IIntercepteurRequeteSentier`, et un `IHorlogeSentier` ou `ISerialiseurVariablesSentier` personnalisé.
 
 Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (pratique avec SQLite) ou remis à un DBA via `GenererScript()`. Les scripts sont aussi dans `src/Sentier.Persistance.*/Scripts`.
 
 ## 2. Connexion et transaction
 
-Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la portée et prend la transaction dans `IAccesseurTransaction` si le client l'a alimenté, sinon l'`IDbTransaction` enregistrée dans la portée.
+Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la portée et prend la transaction dans `IAccesseurTransactionSentier` si le client l'a alimenté, sinon l'`IDbTransaction` enregistrée dans la portée.
 
 Le plus simple : enregistrer la connexion et la transaction dans la portée. Les appels aux services ne prennent ensuite aucun paramètre de connexion.
 
@@ -79,13 +79,13 @@ transaction.Commit();
 
 Dans une application web, ce code va dans un middleware ou une fabrique qui crée la portée pour chaque requête. Avec SQLite, le schéma se crée de la même façon : `await scope.Resolve<InstallateurSchemaSentier>().InstallerAsync();`.
 
-Avec `Microsoft.Extensions.DependencyInjection`, alimenter `IAccesseurTransaction` dans la portée :
+Avec `Microsoft.Extensions.DependencyInjection`, alimenter `IAccesseurTransactionSentier` dans la portée :
 
 ```csharp
 using var scope = provider.CreateScope();
 var connexion = scope.ServiceProvider.GetRequiredService<IDbConnection>();
 using var transaction = connexion.BeginTransaction();
-scope.ServiceProvider.GetRequiredService<IAccesseurTransaction>().Transaction = transaction;
+scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;
 
 var resultat = await scope.ServiceProvider.GetRequiredService<IServiceSentier>()
     .DemarrerAsync("demande-conge", cleAffaire: 42, ValeursVariables.Avec(DemandeConge.NbJours, 3L));
@@ -144,7 +144,7 @@ Toute mise à jour métier passe par une **commande** ; chaque branche condition
 ```csharp
 public sealed class CalculerSolde(IDepotEmployes employes) : ICommandeSentier
 {
-    public async Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct)
+    public async Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct)
     {
         var solde = await employes.SoldeAsync(contexte.Parametres.Lire<long>("employe"), ct);
         contexte.Variables.Ecrire(DemandeConge.Solde, solde);   // variable déclarée et du bon type, sinon erreur
@@ -155,7 +155,7 @@ public sealed class ParametresSolde { public long Jours { get; set; } public lon
 
 public sealed class SoldeSuffisant : RequeteSentier<ParametresSolde>   // paramètres liés par nom de propriété
 {
-    protected override Task<bool> EvaluerAsync(ContexteRequete contexte, ParametresSolde p, CancellationToken ct)
+    protected override Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, ParametresSolde p, CancellationToken ct)
         => Task.FromResult(p.Jours <= p.Solde);
 }
 ```
@@ -171,7 +171,7 @@ Paramètres d'un appel : `Valeur(nom, valeur)` (statique), `Variable([nom, ]vari
 
 ## 6. Gestion des tâches
 
-Comme les définitions, les commandes et les requêtes, les tâches sont l'affaire du client : il implémente `IGestionnaireTaches`, injecté en Scoped. Sentier **ne stocke aucune tâche** (pas de table `_TACHE`) ; il délègue au gestionnaire chaque étape du cycle de vie (`TacheSentier` : identifiant `long`, instance, nœud, statut).
+Comme les définitions, les commandes et les requêtes, les tâches sont l'affaire du client : il implémente `IGestionnaireTachesSentier`, injecté en Scoped. Sentier **ne stocke aucune tâche** (pas de table `_TACHE`) ; il délègue au gestionnaire chaque étape du cycle de vie (`TacheSentier` : identifiant `long`, instance, nœud, statut).
 
 Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COURANTE` sur l'instance (`EtatInstance.IdTacheCourante`), écrit dans la transaction de Sentier. **Seule cette tâche reprend l'instance**, quel que soit le statut tenu par le client :
 
@@ -190,7 +190,7 @@ Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COUR
 | `RenommerNoeudAsync(idInstance, ancien, nouveau)` | migration qui renomme le nœud interactif courant |
 
 ```csharp
-public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
+public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTachesSentier
 {
     public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
         => depot.InsererAsync(demande.IdInstance, demande.CodeNoeud, demande.NomTache, demande.Role, demande.Donnees, ct);
@@ -202,7 +202,7 @@ public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
 }
 ```
 
-L'implémentation est choisie dans cet ordre : `o.UtiliserGestionnaireTaches<MesTaches>()` ; sinon un `IGestionnaireTaches` déjà enregistré par le client avant `AddSentier` ; sinon l'unique implémentation trouvée par balayage (les décorateurs, dont un constructeur reçoit un `IGestionnaireTaches`, sont ignorés). Le déploiement échoue si une définition contient un nœud interactif sans gestionnaire enregistré.
+L'implémentation est choisie dans cet ordre : `o.UtiliserGestionnaireTaches<MesTaches>()` ; sinon un `IGestionnaireTachesSentier` déjà enregistré par le client avant `AddSentier` ; sinon l'unique implémentation trouvée par balayage (les décorateurs, dont un constructeur reçoit un `IGestionnaireTachesSentier`, sont ignorés). Le déploiement échoue si une définition contient un nœud interactif sans gestionnaire enregistré.
 
 Exigences sur l'implémentation :
 
@@ -276,7 +276,7 @@ private static async Task EnTransactionAsync(IServiceProvider provider, Func<ISe
     using var scope = provider.CreateScope();
     var connexion = scope.ServiceProvider.GetRequiredService<IDbConnection>();
     using var transaction = connexion.BeginTransaction();
-    scope.ServiceProvider.GetRequiredService<IAccesseurTransaction>().Transaction = transaction;
+    scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;
     try
     {
         await action(scope.ServiceProvider.GetRequiredService<IServiceSentier>());
@@ -290,7 +290,7 @@ private static async Task EnTransactionAsync(IServiceProvider provider, Func<ISe
 }
 ```
 
-`ReprendreAsync` relance une instance `EnErreur` : si elle attend encore (attente, tâche, enfant), elle redevient `Suspendue` et une échéance déjà atteinte est traitée tout de suite ; sinon son nœud courant est réexécuté. Toutes les dates sont en UTC (`IHorloge`).
+`ReprendreAsync` relance une instance `EnErreur` : si elle attend encore (attente, tâche, enfant), elle redevient `Suspendue` et une échéance déjà atteinte est traitée tout de suite ; sinon son nœud courant est réexécuté. Toutes les dates sont en UTC (`IHorlogeSentier`).
 
 ## 9. Variables : recherche et correction
 

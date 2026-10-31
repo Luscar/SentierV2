@@ -7,5 +7,5 @@ namespace Sentier.Commandes;
 public interface IRequeteSentier
 {
     /// <summary>Évalue la requête.</summary>
-    Task<bool> EvaluerAsync(ContexteRequete contexte, CancellationToken ct);
+    Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, CancellationToken ct);
 }

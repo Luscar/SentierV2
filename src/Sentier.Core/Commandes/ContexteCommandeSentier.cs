@@ -3,9 +3,9 @@ using Sentier.Variables;
 namespace Sentier.Commandes;
 
 /// <summary>Contexte reçu par une commande.</summary>
-public sealed class ContexteCommande
+public sealed class ContexteCommandeSentier
 {
-    internal ContexteCommande(
+    internal ContexteCommandeSentier(
         InstanceProcessus instance,
         string codeNoeud,
         MomentCommande moment,

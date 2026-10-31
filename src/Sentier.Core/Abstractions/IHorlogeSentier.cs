@@ -1,7 +1,7 @@
 namespace Sentier;
 
 /// <summary>Heure courante, injectable. Toutes les dates de Sentier sont en UTC.</summary>
-public interface IHorloge
+public interface IHorlogeSentier
 {
     /// <summary>Date et heure courantes, en UTC.</summary>
     DateTime MaintenantUtc { get; }

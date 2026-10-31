@@ -14,7 +14,7 @@ services.AddSentier(o =>
 services.AddScoped<IServiceProcessusAffaires, ServiceProcessusAffairesSentier>();
 ```
 
-Le gestionnaire de tâches (`IGestionnaireTaches`) s'appuie sur `IAgentServiceOXTache` : le bassin de tâches OX reste en place.
+Le gestionnaire de tâches (`IGestionnaireTachesSentier`) s'appuie sur `IAgentServiceOXTache` : le bassin de tâches OX reste en place.
 
 ## Correspondances à respecter dans les définitions Sentier
 

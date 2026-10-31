@@ -1,7 +1,7 @@
 namespace Sentier.Variables;
 
 /// <summary>Sérialisation des variables d'une instance.</summary>
-public interface ISerialiseurVariables
+public interface ISerialiseurVariablesSentier
 {
     /// <summary>Sérialise des valeurs canoniques en JSON.</summary>
     string Serialiser(IReadOnlyDictionary<string, object?> valeurs);

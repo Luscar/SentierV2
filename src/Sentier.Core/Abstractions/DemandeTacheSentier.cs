@@ -1,6 +1,6 @@
 namespace Sentier;
 
-/// <summary>Demande de création d'une tâche, transmise au <see cref="IGestionnaireTaches"/> du client.</summary>
+/// <summary>Demande de création d'une tâche, transmise au <see cref="IGestionnaireTachesSentier"/> du client.</summary>
 public sealed class DemandeTacheSentier
 {
     /// <summary>Instance à l'origine de la tâche.</summary>

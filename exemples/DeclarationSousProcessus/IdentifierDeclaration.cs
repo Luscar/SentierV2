@@ -6,6 +6,6 @@ namespace Exemples.DeclarationSousProcessus;
 
 public sealed class IdentifierDeclaration(IServiceIdentification identification) : ICommandeSentier
 {
-    public Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct)
+    public Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct)
         => identification.IdentifierAsync(contexte.CleAffaire, ct);
 }

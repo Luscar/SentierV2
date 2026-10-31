@@ -12,19 +12,19 @@ public interface IServiceSentier
     /// <summary>
     /// Démarre une instance de la dernière version active du processus, sur une clé d'affaire.
     /// Si le processus est à instance unique et déjà actif pour cette clé, retourne <c>SansEffet</c> avec l'instance existante.
-    /// <paramref name="utilisateur"/> est l'auteur pour l'audit ; par défaut, celui de <see cref="IContexteUtilisateur"/>.
+    /// <paramref name="utilisateur"/> est l'auteur pour l'audit ; par défaut, celui de <see cref="IContexteUtilisateurSentier"/>.
     /// </summary>
     Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, string? utilisateur = null, CancellationToken ct = default);
 
     /// <summary>
     /// Complète une tâche utilisateur à partir de son identifiant chez le client, puis reprend l'instance
-    /// (fusion des données, commandes de sortie, puis <see cref="IGestionnaireTaches.CompleterTacheAsync"/>).
+    /// (fusion des données, commandes de sortie, puis <see cref="IGestionnaireTachesSentier.CompleterTacheAsync"/>).
     /// </summary>
     Task<ResultatExecution> CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees = null, string? utilisateur = null, CancellationToken ct = default);
 
     /// <summary>
     /// Assigne (ou réassigne) une tâche utilisateur, à partir de son identifiant chez le client
-    /// (<see cref="IGestionnaireTaches.AssignerTacheAsync"/>). <c>SansEffet</c> si la tâche est inconnue,
+    /// (<see cref="IGestionnaireTachesSentier.AssignerTacheAsync"/>). <c>SansEffet</c> si la tâche est inconnue,
     /// n'est plus ouverte ou n'est pas celle que l'instance attend.
     /// </summary>
     Task<ResultatExecution> AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct = default);
@@ -38,7 +38,7 @@ public interface IServiceSentier
     /// <remarks>
     /// Les valeurs déjà calculées à l'entrée du nœud courant (échéance, clé de corrélation, données de la tâche)
     /// ne sont pas recalculées. <paramref name="utilisateur"/> est l'auteur pour le journal ; par défaut, celui de
-    /// <see cref="IContexteUtilisateur"/>.
+    /// <see cref="IContexteUtilisateurSentier"/>.
     /// </remarks>
     Task<ResultatExecution> ModifierVariablesAsync(IdInstance idInstance, IReadOnlyDictionary<string, object?> valeurs, string? utilisateur = null, CancellationToken ct = default);
 

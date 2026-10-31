@@ -21,6 +21,6 @@ public sealed class DemandeMigration
     /// <summary>Nombre maximal d'instances traitées (par lot).</summary>
     public int TailleMax { get; init; } = 100;
 
-    /// <summary>Utilisateur à l'origine de la migration (sinon, <see cref="IContexteUtilisateur"/>).</summary>
+    /// <summary>Utilisateur à l'origine de la migration (sinon, <see cref="IContexteUtilisateurSentier"/>).</summary>
     public string? Utilisateur { get; init; }
 }

@@ -10,7 +10,7 @@ namespace Sentier;
 /// Découverte par balayage d'assemblys (une seule implémentation), ou enregistrée explicitement par
 /// <see cref="OptionsSentier.UtiliserGestionnaireTaches{T}"/>.
 /// </remarks>
-public interface IGestionnaireTaches
+public interface IGestionnaireTachesSentier
 {
     /// <summary>Crée une tâche ouverte pour un nœud interactif et retourne son identifiant.</summary>
     Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct = default);

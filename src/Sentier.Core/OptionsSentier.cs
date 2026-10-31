@@ -22,7 +22,7 @@ public sealed partial class OptionsSentier
     public List<Assembly> Assemblys { get; } = [];
 
     /// <summary>
-    /// Implémentation de <see cref="IGestionnaireTaches"/> à enregistrer (Scoped). Si elle n'est pas fournie,
+    /// Implémentation de <see cref="IGestionnaireTachesSentier"/> à enregistrer (Scoped). Si elle n'est pas fournie,
     /// celle trouvée par balayage est utilisée.
     /// </summary>
     public Type? TypeGestionnaireTaches { get; private set; }
@@ -73,7 +73,7 @@ public sealed partial class OptionsSentier
     public OptionsSentier BalayerAssemblyDe<T>() => Balayer(typeof(T).Assembly);
 
     /// <summary>Enregistre l'implémentation du gestionnaire de tâches du client, à la place de celle trouvée par balayage.</summary>
-    public OptionsSentier UtiliserGestionnaireTaches<T>() where T : class, IGestionnaireTaches
+    public OptionsSentier UtiliserGestionnaireTaches<T>() where T : class, IGestionnaireTachesSentier
     {
         TypeGestionnaireTaches = typeof(T);
         return this;

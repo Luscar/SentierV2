@@ -6,7 +6,7 @@ namespace Exemples.DeclarationSousProcessus;
 /// Gestionnaire de tâches en mémoire ; les tâches sont portées par les sous-processus. Dans l'application, il s'appuie sur le bassin de tâches existant
 /// et utilise la même transaction que Sentier.
 /// </summary>
-public sealed class GestionnaireTachesMemoire : IGestionnaireTaches
+public sealed class GestionnaireTachesMemoire : IGestionnaireTachesSentier
 {
     private static readonly List<(TacheSentier Tache, DemandeTacheSentier Demande)> Taches = [];
 
