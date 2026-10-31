@@ -159,21 +159,39 @@ tous ses appels par un wrapper maison autour de Dapper (par exemple `IAccesBDPlu
 `IAccesBDEcriturePlus` et `IAccesBDLecturePlus`) peut y faire passer Sentier aussi. Il suffit d'un adaptateur de quatre méthodes :
 
 ```csharp
-public sealed class ExecuteurSqlAccesBDPlus(IAccesBDPlus accesBD) : IExecuteurSqlSentier
+using AccesBDPlus;
+using Sentier;
+using Sentier.Persistance.Dapper;
+
+public sealed class ExecuteurSqlAccesBDPlus : IExecuteurSqlSentier
 {
+    private readonly IAccesBDPlus _accesBD;
+
+    public ExecuteurSqlAccesBDPlus(IAccesBDPlus accesBD)
+    {
+        _accesBD = accesBD;
+        SentierDapper.EnregistrerGestionnairesTypes(); // identifiants typés de Sentier (IdInstance…) pour Dapper
+    }
+
+    // AccesBDDapper traduit les requêtes (TraducteurOracle / TraducteurSQLite) : Sentier lui laisse les paramètres @nom.
+    public bool TraduitLesParametres => true;
+
     public Task<int> ExecuterAsync(string sql, object? parametres, CancellationToken ct)
-        => accesBD.ExecuteNonQueryAsync(sql, parametres, ct);
+        => _accesBD.ExecuteNonQueryAsync(sql, parametres, ct);
 
     public Task<T?> ExecuterScalaireAsync<T>(string sql, object? parametres, CancellationToken ct)
-        => accesBD.ExecuteScalarAsync<T>(sql, parametres, ct);
+        => _accesBD.ExecuteScalarAsync<T>(sql, parametres, ct);
 
     public Task<IEnumerable<T>> LireAsync<T>(string sql, object? parametres, CancellationToken ct)
-        => accesBD.QueryAsync<T>(sql, parametres, ct);
+        => _accesBD.QueryAsync<T>(sql, parametres, ct);
 
     public Task<T?> LirePremierOuDefautAsync<T>(string sql, object? parametres, CancellationToken ct)
-        => accesBD.QueryFirstOrDefaultAsync<T>(sql, parametres, ct);
+        => _accesBD.QueryFirstOrDefaultAsync<T>(sql, parametres, ct);
 }
 ```
+
+`ExecuteNonQueryAsync` doit retourner le nombre de lignes touchées (c'est le cas de `IAccesBDEcriturePlus`) : Sentier s'en
+sert pour détecter une mise à jour concurrente d'une instance (`… AND VERSI = :version`).
 
 Enregistrement (Autofac ou `Microsoft.Extensions.DependencyInjection`, même option) :
 
@@ -198,7 +216,11 @@ portee.Complete();
 
 Ce que l'adaptateur reçoit et doit respecter :
 
-- **Le SQL est déjà dans la syntaxe du dialecte** : paramètres `:nom` sous Oracle, `@nom` sous SQLite.
+- **Paramètres** : si `TraduitLesParametres` est vrai, Sentier envoie ses paramètres en `@nom` et le traducteur du
+  wrapper les met dans la syntaxe de la base ; sinon (valeur par défaut), Sentier les traduit lui-même (`:nom` sous
+  Oracle, `@nom` sous SQLite). Le reste de la syntaxe propre à la base que Sentier construit (`ROWNUM`,
+  `FOR UPDATE SKIP LOCKED`, `NEXTVAL`, script DDL) suit toujours le dialecte choisi (`UtiliserOracle`, `UtiliserSqlite`) :
+  il doit correspondre à la base visée par le traducteur.
 - **Les paramètres sont des objets Dapper** : objets anonymes, `DynamicParameters`, et listes développées par Dapper
   (`STAT IN :statuts`). Le wrapper doit les transmettre tels quels à Dapper.
 - **Les lignes sont mappées par nom de colonne** (`QueryAsync<T>` de Dapper).
