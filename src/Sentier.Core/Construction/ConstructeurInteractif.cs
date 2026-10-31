@@ -67,8 +67,7 @@ public sealed class ConstructeurInteractif
     public ConstructeurInteractif CommandeEntree<TCommande>(Action<ConfigurationParametres>? parametres = null) where TCommande : ICommandeSentier
         => CommandeEntree(NomsSentier.NomCommande(typeof(TCommande)), parametres);
 
-    /// <summary>Commande désignée par son nom, exécutée à l'entrée.</summary>
-    public ConstructeurInteractif CommandeEntree(string nomCommande, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurInteractif CommandeEntree(string nomCommande, Action<ConfigurationParametres>? parametres = null)
     {
         _entree.Add(ConfigurationParametres.Appel(nomCommande, parametres));
         return this;
@@ -78,8 +77,7 @@ public sealed class ConstructeurInteractif
     public ConstructeurInteractif CommandeSortie<TCommande>(Action<ConfigurationParametres>? parametres = null) where TCommande : ICommandeSentier
         => CommandeSortie(NomsSentier.NomCommande(typeof(TCommande)), parametres);
 
-    /// <summary>Commande désignée par son nom, exécutée à la sortie.</summary>
-    public ConstructeurInteractif CommandeSortie(string nomCommande, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurInteractif CommandeSortie(string nomCommande, Action<ConfigurationParametres>? parametres = null)
     {
         _sortie.Add(ConfigurationParametres.Appel(nomCommande, parametres));
         return this;

@@ -60,8 +60,7 @@ public sealed class ConstructeurAttente : ConstructeurBranches<ConstructeurAtten
     public ConstructeurAttente CommandeEntree<TCommande>(Action<ConfigurationParametres>? parametres = null) where TCommande : ICommandeSentier
         => CommandeEntree(NomsSentier.NomCommande(typeof(TCommande)), parametres);
 
-    /// <summary>Commande désignée par son nom, exécutée à l'entrée.</summary>
-    public ConstructeurAttente CommandeEntree(string nomCommande, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurAttente CommandeEntree(string nomCommande, Action<ConfigurationParametres>? parametres = null)
     {
         _commandesEntree.Add(ConfigurationParametres.Appel(nomCommande, parametres));
         return this;

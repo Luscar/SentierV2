@@ -39,12 +39,10 @@ public sealed class ConstructeurDecision : ConstructeurBranches<ConstructeurDeci
     public ConstructeurDecision SiPas<TRequete>(Action<ConfigurationParametres>? parametres = null) where TRequete : IRequeteSentier
         => SiPas(NomsSentier.NomRequete(typeof(TRequete)), parametres);
 
-    /// <summary>Branche conditionnelle sur une requête désignée par son nom.</summary>
-    public ConstructeurDecision Si(string nomRequete, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurDecision Si(string nomRequete, Action<ConfigurationParametres>? parametres = null)
         => AjouterRequete(nomRequete, false, parametres);
 
-    /// <summary>Branche à résultat inversé sur une requête désignée par son nom.</summary>
-    public ConstructeurDecision SiPas(string nomRequete, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurDecision SiPas(string nomRequete, Action<ConfigurationParametres>? parametres = null)
         => AjouterRequete(nomRequete, true, parametres);
 
     /// <summary>
@@ -53,28 +51,6 @@ public sealed class ConstructeurDecision : ConstructeurBranches<ConstructeurDeci
     /// Sa sortie porte l'expression de la condition (<c>montant &gt; 1000</c>) ; <see cref="Nommee"/> la renomme.
     /// </summary>
     public ConditionDecision<T> Si<T>(Variable<T> variable) => new(this, variable.Nom, variable.Type);
-
-    /// <summary>Branche conditionnelle sur une variable désignée par son nom, avec un opérateur et une valeur fixe.</summary>
-    public ConstructeurDecision SiVariable(string nomVariable, OperateurComparaison operateur, object? valeur = null)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(nomVariable);
-        if (ConditionVariable.EstUnaire(operateur))
-        {
-            return AjouterCondition(new ConditionVariable { Variable = nomVariable, Operateur = operateur });
-        }
-
-        if (valeur is null)
-        {
-            return operateur switch
-            {
-                OperateurComparaison.Egal => SiVariable(nomVariable, OperateurComparaison.EstVide),
-                OperateurComparaison.Different => SiVariable(nomVariable, OperateurComparaison.EstRenseignee),
-                _ => throw new ArgumentNullException(nameof(valeur), $"L'opérateur {operateur} exige une valeur de comparaison."),
-            };
-        }
-
-        return AjouterCondition(new ConditionVariable { Variable = nomVariable, Operateur = operateur, Valeur = ValeurTypee.Depuis(valeur, null, nomVariable) });
-    }
 
     /// <summary>Branche « sinon », prise si aucune requête ne retourne vrai ; sans destination, elle mène au nœud suivant.</summary>
     public ConstructeurDecision Sinon() => AjouterBranche(BrancheSinon());

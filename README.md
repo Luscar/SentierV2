@@ -139,7 +139,7 @@ Le guide complet du constructeur (nœuds, branches, paramètres, tableau des dé
 
 ## 4. Commandes et requêtes
 
-Toute mise à jour métier passe par une **commande** ; chaque branche conditionnelle d'une décision est évaluée par une **requête** (lecture seule), ou directement par une condition sur variable (`.Si(Montant).SuperieurA(1000m)`, voir [docs/constructeur.md](docs/constructeur.md)). Commandes et requêtes sont découvertes par balayage d'assemblys, enregistrées en Scoped, référencées par nom (celui de la classe, ou de l'attribut `[CommandeSentier("nom")]` / `[RequeteSentier("nom")]`) et peuvent injecter leurs propres services : elles travaillent dans la même transaction.
+Toute mise à jour métier passe par une **commande** ; chaque branche conditionnelle d'une décision est évaluée par une **requête** (lecture seule), ou directement par une condition sur variable (`.Si(Montant).SuperieurA(1000m)`, voir [docs/constructeur.md](docs/constructeur.md)). Commandes et requêtes sont découvertes par balayage d'assemblys, enregistrées en Scoped, désignées dans les définitions par leur classe et stockées par nom (celui de la classe ; `[CommandeSentier("AncienNom")]` / `[RequeteSentier("AncienNom")]` garde l'ancien nom après un renommage, ce que le déploiement vérifie) et peuvent injecter leurs propres services : elles travaillent dans la même transaction.
 
 ```csharp
 public sealed class CalculerSolde(IDepotEmployes employes) : ICommandeSentier

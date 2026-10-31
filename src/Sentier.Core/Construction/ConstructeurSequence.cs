@@ -26,8 +26,7 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
         where TCommande : ICommandeSentier
         => Systemique(code, NomsSentier.NomCommande(typeof(TCommande)), parametres);
 
-    /// <summary>Nœud systémique exécutant une commande désignée par son nom.</summary>
-    public TSelf Systemique(string code, string nomCommande, Action<ConfigurationParametres>? parametres = null)
+    private TSelf Systemique(string code, string nomCommande, Action<ConfigurationParametres>? parametres = null)
         => Ajouter(new NoeudSystemique { Code = code, Commande = ConfigurationParametres.Appel(nomCommande, parametres) });
 
     /// <summary>Nœud d'attente : échéance et/ou signaux, chacun avec sa branche.</summary>

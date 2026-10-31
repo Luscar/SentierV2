@@ -158,7 +158,7 @@ Une branche peut aussi tester **une variable directement**, sans écrire de requ
 | `EstVrai`, `EstFaux` | booléen |
 | `EstRenseignee`, `EstVide` | tous |
 
-Un entier et un décimal se comparent entre eux. Une variable sans valeur ne satisfait que `EstVide` et `DifferentDe`. `EgalA(null)` équivaut à `EstVide()`. Sans le constructeur typé : `.SiVariable("montant", OperateurComparaison.Superieur, 10_000m)`.
+Un entier et un décimal se comparent entre eux. Une variable sans valeur ne satisfait que `EstVide` et `DifferentDe`. `EgalA(null)` équivaut à `EstVide()`.
 
 La sortie d'une condition porte son expression (`montant > 10000`), visible dans l'historique et le diagramme ; `.Nommee(…)` lui donne un nom stable, à préférer si la valeur peut changer d'une version à l'autre.
 
@@ -263,7 +263,9 @@ Chaque appel déclare ses paramètres dans un bloc `p => …` :
 
 Avec `CommandeSentier<TParametres>` / `RequeteSentier<TParametres>`, les paramètres sont liés aux propriétés par nom.
 
-Les commandes et requêtes sont désignées par leur **classe** ; leur nom est celui de la classe, ou celui de `[CommandeSentier("nom")]` / `[RequeteSentier("nom")]`. Les variantes par nom (`Systemique("code", "NomCommande")`, `Si("NomRequete")`) existent pour les cas sans classe.
+Les commandes et requêtes sont désignées par leur **classe** (`Systemique<T>`, `Si<T>`, `CommandeEntree<T>`…) : aucune chaîne à écrire. La définition stockée garde leur nom, celui de la classe par défaut.
+
+> **Renommer une classe de commande ou de requête.** Les versions déjà déployées citent l'ancien nom. Ajoutez-le à la classe renommée, `[CommandeSentier("AncienNom")]` / `[RequeteSentier("AncienNom")]`, tant que des instances actives suivent ces versions. Le déploiement le vérifie : une commande ou requête d'une version encore suivie par des instances actives qui n'est plus enregistrée bloque le déploiement, avec le nom à reprendre.
 
 ## 7. Défauts et options
 
@@ -299,7 +301,7 @@ La construction vérifie toute la définition et lève `DefinitionInvalideExcept
 - branche avec deux destinations, `Alors`/`Vers`/`Nommee` sans branche avant ;
 - variables référencées déclarées, variable déclarée deux fois différemment.
 
-Le déploiement vérifie en plus que les commandes et requêtes sont enregistrées et que les sous-processus et leurs mappages sont cohérents.
+Le déploiement vérifie en plus que les commandes et requêtes sont enregistrées, y compris celles des versions antérieures encore suivies par des instances actives, et que les sous-processus et leurs mappages sont cohérents.
 
 Un test qui construit toutes les définitions détecte ces erreurs avant le déploiement :
 

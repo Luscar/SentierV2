@@ -193,7 +193,7 @@ public sealed class NotifierEmploye(INotifications notifications) : CommandeSent
 }
 ```
 
-Nom de la commande : celui de la classe, ou `[CommandeSentier("nom")]`. Deux commandes du même nom font échouer le démarrage.
+Nom de la commande : celui de la classe. Après un renommage, `[CommandeSentier("AncienNom")]` garde l'ancien nom pour les versions déjà déployées ; le déploiement échoue si une version suivie par des instances actives cite une commande introuvable. Deux commandes du même nom font échouer le démarrage.
 
 ### 4.2 Requêtes — `IRequeteSentier`
 
@@ -219,7 +219,7 @@ public sealed class SoldeSuffisant : RequeteSentier<ParametresSolde>
 }
 ```
 
-Nom : celui de la classe, ou `[RequeteSentier("nom")]`. Une décision sur une simple variable ne demande aucune requête.
+Nom : celui de la classe ; `[RequeteSentier("AncienNom")]` après un renommage, comme pour les commandes. Une décision sur une simple variable ne demande aucune requête.
 
 ### 4.3 Tâches utilisateurs — `IGestionnaireTachesSentier`
 

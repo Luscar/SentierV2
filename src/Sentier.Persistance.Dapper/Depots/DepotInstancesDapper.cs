@@ -155,6 +155,15 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
         return lignes.Select(l => new CompteInstancesActives(new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l.VERSI, l.ID_NOEUD, l.NOMBRE)).ToList();
     }
 
+    public async Task<IReadOnlyDictionary<IdDefinition, int>> CompterActivesParVersionAsync(CancellationToken ct)
+    {
+        var lignes = await sql.Connexion.QueryAsync<LigneCompteVersion>(sql.Lecture(
+            $"SELECT NO_SEQ_DEFIN_PROCS, COUNT(*) AS NOMBRE FROM {Table} WHERE STAT IN {CodesBaseDonnees.StatutsActifs} GROUP BY NO_SEQ_DEFIN_PROCS",
+            null,
+            ct));
+        return lignes.ToDictionary(l => new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l => l.NOMBRE);
+    }
+
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirAuReposAsync(IdDefinition idDefinition, string? codeNoeud, int taille, CancellationToken ct)
     {
         var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_DEFIN_PROCS = @id AND STAT IN {CodesBaseDonnees.StatutsAuRepos}";
@@ -174,6 +183,13 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     private async Task<IReadOnlyList<InstanceProcessus>> ListerAsync(string requete, object? parametres, CancellationToken ct)
         => (await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(requete, parametres, ct))).Select(l => l.VersDomaine()).ToList();
+
+    private sealed class LigneCompteVersion
+    {
+        public long NO_SEQ_DEFIN_PROCS { get; set; }
+
+        public int NOMBRE { get; set; }
+    }
 
     private sealed class LigneCompte
     {
