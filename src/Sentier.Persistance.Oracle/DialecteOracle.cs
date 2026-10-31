@@ -17,13 +17,16 @@ public sealed class DialecteOracle : DialecteSqlBase
     public override string VerrouillageSansAttente => " FOR UPDATE SKIP LOCKED";
 
     /// <inheritdoc />
+    public override bool SupporteTransactionAmbiante => true;
+
+    /// <inheritdoc />
     protected override string RessourceScript => "Sentier.Persistance.Oracle.Scripts.oracle.sql";
 
     /// <inheritdoc />
     public override string Parametre(string nom) => ":" + nom;
 
     /// <inheritdoc />
-    public override Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
+    public override Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
         => connexion.ExecuteScalarAsync<long>(new CommandDefinition($"SELECT {nomSequence}.NEXTVAL FROM DUAL", transaction: transaction, cancellationToken: ct));
 
     /// <inheritdoc />

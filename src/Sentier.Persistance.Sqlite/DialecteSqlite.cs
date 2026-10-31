@@ -17,13 +17,17 @@ public sealed class DialecteSqlite : DialecteSqlBase
     public override string VerrouillageSansAttente => "";
 
     /// <inheritdoc />
+    /// <remarks>Microsoft.Data.Sqlite ne s'enrôle pas dans un TransactionScope : chaque instruction serait validée immédiatement.</remarks>
+    public override bool SupporteTransactionAmbiante => false;
+
+    /// <inheritdoc />
     protected override string RessourceScript => "Sentier.Persistance.Sqlite.Scripts.sqlite.sql";
 
     /// <inheritdoc />
     public override string Parametre(string nom) => "@" + nom;
 
     /// <inheritdoc />
-    public override async Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
+    public override async Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
     {
         var table = noms.TableSequences;
         var lignes = await connexion.ExecuteAsync(new CommandDefinition(

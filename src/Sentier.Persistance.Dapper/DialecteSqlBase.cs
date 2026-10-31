@@ -14,10 +14,13 @@ public abstract partial class DialecteSqlBase : IDialecteSql
     public abstract string VerrouillageSansAttente { get; }
 
     /// <inheritdoc />
+    public abstract bool SupporteTransactionAmbiante { get; }
+
+    /// <inheritdoc />
     public abstract string Parametre(string nom);
 
     /// <inheritdoc />
-    public abstract Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction transaction, NomsObjets noms, string nomSequence, CancellationToken ct);
+    public abstract Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct);
 
     /// <inheritdoc />
     public abstract string Limiter(string sql, int taille);

@@ -7,7 +7,8 @@ namespace Sentier.Persistance.Dapper;
 
 /// <summary>
 /// Accès commun des dépôts à la session du client, au dialecte et aux noms d'objets. Enregistré en Scoped.
-/// La transaction est passée systématiquement à chaque requête ; les écritures l'exigent.
+/// La transaction est passée systématiquement à chaque requête ; les écritures l'exigent
+/// (<see cref="IDbTransaction"/> du client, ou transaction ambiante : la commande part alors avec <c>transaction: null</c>).
 /// </summary>
 public sealed partial class ContexteSql
 {
@@ -37,13 +38,26 @@ public sealed partial class ContexteSql
     public CommandDefinition Lecture(string sql, object? parametres, CancellationToken ct)
         => new(Traduire(sql), parametres, _session.Transaction, cancellationToken: ct);
 
-    /// <summary>Commande d'écriture (transaction obligatoire).</summary>
+    /// <summary>Commande d'écriture (transaction du client ou transaction ambiante obligatoire).</summary>
     public CommandDefinition Ecriture(string sql, object? parametres, CancellationToken ct)
-        => new(Traduire(sql), parametres, _session.ExigerTransaction(), cancellationToken: ct);
+        => new(Traduire(sql), parametres, TransactionEcriture(), cancellationToken: ct);
 
     /// <summary>Identifiant suivant d'une séquence.</summary>
     public Task<long> ProchainIdAsync(string nomSequence, CancellationToken ct)
-        => Dialecte.ProchainIdentifiantAsync(Connexion, _session.ExigerTransaction(), Noms, nomSequence, ct);
+        => Dialecte.ProchainIdentifiantAsync(Connexion, TransactionEcriture(), Noms, nomSequence, ct);
+
+    // Transaction ambiante (null) acceptée seulement si le dialecte s'y enrôle ; sinon l'écriture serait validée immédiatement.
+    private IDbTransaction? TransactionEcriture()
+    {
+        var transaction = _session.ExigerTransaction();
+        if (transaction is null && !Dialecte.SupporteTransactionAmbiante)
+        {
+            throw new TransactionRequiseException(
+                $"Le dialecte {Dialecte.Type} ne s'enrôle pas dans une transaction ambiante (TransactionScope) : fournir une IDbTransaction via ISessionSentier.");
+        }
+
+        return transaction;
+    }
 
     /// <summary>Booléen stocké en nombre (<c>NUMBER(1)</c> / <c>INTEGER</c>).</summary>
     public static int Booleen(bool valeur) => valeur ? 1 : 0;

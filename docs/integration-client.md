@@ -9,7 +9,7 @@ Le pas-à-pas complet est dans le [guide de démarrage](demarrage.md) ; les règ
 | Contrat | Quand | Trouvé par | Durée de vie |
 |---|---|---|---|
 | `IDbConnection` (enregistrement) | **Toujours** | Enregistrée par le client | Portée |
-| Transaction : `IDbTransaction`, `IAccesseurTransaction` ou `ISessionSentier` | **Toujours** (écritures) | Enregistrée ou alimentée par le client | Portée |
+| Transaction : `IDbTransaction`, `IAccesseurTransaction`, `ISessionSentier`, ou `TransactionScope` (Oracle) | **Toujours** (écritures) | Enregistrée ou alimentée par le client | Portée |
 | `DefinitionSentier` + `[ProcessusSentier]` | **Toujours** : un par processus | Balayage | — |
 | `ICommandeSentier` / `CommandeSentier<T>` | Nœuds `Systemique`, commandes d'entrée et de sortie, calcul de migration | Balayage | Portée |
 | `IRequeteSentier` / `RequeteSentier<T>` | Branches de `Decision` calculées par code | Balayage | Portée |
@@ -115,6 +115,27 @@ public sealed class MaSession(UniteDeTravail uow) : ISessionSentier
 ```
 
 Enregistrement : `o.UtiliserSession<MaSession>()`.
+
+**Application sans `IDbTransaction` (Oracle).** Si l'application n'enregistre que l'`IDbConnection` (ses appels Dapper
+passent `transaction: null`) et rend ses écritures atomiques avec un `TransactionScope`, rien d'autre n'est à fournir :
+Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée.
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+using var connexion = fabriqueConnexions.Ouvrir();                           // ouverte DANS la portée : enrôlée
+
+await using var scope = container.BeginLifetimeScope(b =>
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+- La connexion doit être ouverte **à l'intérieur** de la portée ; `TransactionScopeAsyncFlowOption.Enabled` est nécessaire avec `async`.
+- **Oracle seulement** : Microsoft.Data.Sqlite ne s'enrôle pas dans un `TransactionScope`. Avec SQLite, Sentier refuse
+  d'écrire (`TransactionRequiseException`) plutôt que de valider chaque instruction immédiatement ; les tests SQLite
+  fournissent une `IDbTransaction`.
+- Sans `IDbTransaction` ni `TransactionScope`, Sentier refuse toujours d'écrire.
 
 ### 3.2 Définitions de processus
 
@@ -306,7 +327,7 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 ## 7. Liste de contrôle
 
 - [ ] `ModuleSentier` (ou `AddSentier`) avec préfixe, dialecte et `BalayerAssemblyDe<T>()` pour chaque assembly concerné.
-- [ ] Une portée par unité de travail, avec `IDbConnection` ouverte et la transaction (§ 2).
+- [ ] Une portée par unité de travail, avec `IDbConnection` ouverte et la transaction, ou un `TransactionScope` sous Oracle (§ 2, § 3.1).
 - [ ] Une `DefinitionSentier` + `[ProcessusSentier]` par processus ; `DeployerDefinitionsAsync()` au démarrage.
 - [ ] Une `ICommandeSentier` par commande référencée ; une `IRequeteSentier` par décision calculée.
 - [ ] `IGestionnaireTaches` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.

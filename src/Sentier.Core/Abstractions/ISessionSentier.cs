@@ -11,6 +11,9 @@ public interface ISessionSentier
     /// <summary>Connexion du client, déjà ouverte.</summary>
     IDbConnection Connexion { get; }
 
-    /// <summary>Transaction courante du client, ou <c>null</c> si aucune n'est active.</summary>
+    /// <summary>
+    /// Transaction courante du client, ou <c>null</c> si aucune n'est active. Peut rester <c>null</c> si le client
+    /// travaille dans un <see cref="System.Transactions.TransactionScope"/> où la connexion est enrôlée.
+    /// </summary>
     IDbTransaction? Transaction { get; }
 }
