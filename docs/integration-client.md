@@ -33,7 +33,7 @@ var builder = new ContainerBuilder();
 builder.RegisterModule(new ModuleSentier(o => o
     .UtiliserOracle("SENTIER")                 // préfixe des tables (obligatoire) ; UtiliserSqlite("SENTIER") pour les tests
     .BalayerAssemblyDe<Program>()));           // définitions, commandes, requêtes, plans de migration, gestionnaire de tâches
-    // .UtiliserGestionnaireTaches<MesTaches>()  // seulement s'il y a plusieurs implémentations
+    // .UtiliserGestionnaireTaches<MesTaches>()  // si le balayage ne suffit pas : plusieurs implémentations, ou classe hors des assemblys balayés
     // .UtiliserSession<MaSession>()             // seulement pour une session sur mesure (§ 3.1)
 
 // Optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
@@ -247,7 +247,9 @@ public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
 
 Si les tâches sont en base, utiliser la **même connexion et transaction** que Sentier (injecter `IDbConnection`
 ou `ISessionSentier`). Le balayage ignore les décorateurs (classes dont un constructeur reçoit un
-`IGestionnaireTaches`) ; s'il reste plusieurs implémentations, choisir avec `UtiliserGestionnaireTaches<T>()`.
+`IGestionnaireTaches`). Sans indication, l'unique implémentation trouvée est enregistrée automatiquement ;
+`UtiliserGestionnaireTaches<T>()` est nécessaire s'il en reste plusieurs (sinon erreur au démarrage, même avec Autofac)
+ou si la classe est dans un assembly non balayé.
 
 ### 4.4 Plans de migration — `IPlanMigration`
 
