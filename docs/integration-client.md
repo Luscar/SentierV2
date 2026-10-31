@@ -17,7 +17,7 @@ Le pas-à-pas complet est dans le [guide de démarrage](demarrage.md) ; les règ
 | `IPlanMigration` | Migration d'instances non compatible avec la nouvelle version | Balayage | — |
 | `IContexteUtilisateurSentier` | Optionnel : utilisateur courant pour l'audit | Enregistré par le client | Portée |
 | `IHorlogeSentier` | Optionnel : heure courante (tests des échéances) | Enregistrée par le client | Singleton |
-| `IHandlerCommandeSentier` / `IHandlerRequeteSentier` | Optionnel : journalisation, audit, mesure | Enregistrés par le client | Portée |
+| `IIntercepteurCommandeSentier` / `IIntercepteurRequeteSentier` | Optionnel : journalisation, audit, mesure | Enregistrés par le client | Portée |
 | `ISerialiseurVariablesSentier` | Optionnel : format de stockage des variables (JSON par défaut) | Enregistré par le client | Singleton |
 
 « Balayage » : les types concrets des assemblys indiqués par `BalayerAssemblyDe<T>()` sont trouvés et enregistrés
@@ -38,8 +38,8 @@ builder.RegisterModule(new ModuleSentier(o => o
 
 // Optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
 builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalCommandes>().As<IHandlerCommandeSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalRequetes>().As<IHandlerRequeteSentier>().InstancePerLifetimeScope();
+builder.RegisterType<JournalCommandes>().As<IIntercepteurCommandeSentier>().InstancePerLifetimeScope();
+builder.RegisterType<JournalRequetes>().As<IIntercepteurRequeteSentier>().InstancePerLifetimeScope();
 builder.RegisterType<HorlogeMetier>().As<IHorlogeSentier>().SingleInstance();
 
 var container = builder.Build();
@@ -71,7 +71,7 @@ services.AddSentier(o => o.UtiliserOracle("SENTIER").BalayerAssemblyDe<Program>(
 // Optionnels : IHorlogeSentier et ISerialiseurVariablesSentier AVANT AddSentier (Sentier ne les ajoute que s'ils manquent),
 // les autres où l'on veut.
 services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();
-services.AddScoped<IHandlerCommandeSentier, JournalCommandes>();
+services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();
 ```
 
 Par portée, alimenter la transaction :
@@ -89,7 +89,7 @@ transaction.Commit();
 ### 2.3 Ce que Sentier n'enregistre jamais
 
 - l'`IDbConnection` et l'`IDbTransaction` : elles appartiennent au client ;
-- `IContexteUtilisateurSentier`, les handlers : à enregistrer par le client s'il en veut.
+- `IContexteUtilisateurSentier`, les intercepteurs : à enregistrer par le client s'il en veut.
 
 ## 3. Contrats obligatoires
 
@@ -300,12 +300,12 @@ Utilisation : `SimulerMigrationAsync` (rapport, rien n'est écrit), puis `Migrer
 |---|---|---|
 | `IContexteUtilisateurSentier` | `string? Utilisateur { get; }` | Auteur par défaut des actions (audit) quand l'appel n'en précise pas |
 | `IHorlogeSentier` | `DateTime MaintenantUtc { get; }` | Heure courante (UTC) ; une horloge simulée permet de tester les échéances |
-| `IHandlerCommandeSentier` | `Task ExecuterAsync(string nomCommande, ContexteCommandeSentier contexte, Func<Task> suivant, ct)` | Code autour de chaque commande ; appeler `suivant()` |
-| `IHandlerRequeteSentier` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequeteSentier contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
+| `IIntercepteurCommandeSentier` | `Task ExecuterAsync(string nomCommande, ContexteCommandeSentier contexte, Func<Task> suivant, ct)` | Code autour de chaque commande ; appeler `suivant()` |
+| `IIntercepteurRequeteSentier` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequeteSentier contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
 | `ISerialiseurVariablesSentier` | `string Serialiser(valeurs)` ; `Dictionary<string, object?> Deserialiser(json, types)` | Remplacer le stockage JSON des variables |
 | `ISessionSentier` | `IDbConnection Connexion` ; `IDbTransaction? Transaction` | Session sur mesure (§ 3.1), par `UtiliserSession<T>()` |
 
-Plusieurs handlers peuvent être enregistrés : ils s'enchaînent dans l'ordre d'enregistrement.
+Plusieurs intercepteurs peuvent être enregistrés : ils s'enchaînent dans l'ordre d'enregistrement.
 
 ## 6. Appels de l'application
 
@@ -335,4 +335,4 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 - [ ] `IGestionnaireTachesSentier` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.
 - [ ] Un batch des échéances si un processus utilise `.Echeance(...)` ou une attente temporelle.
 - [ ] `IPlanMigration` pour chaque migration non compatible.
-- [ ] (Optionnel) `IContexteUtilisateurSentier`, handlers, `IHorlogeSentier`, `ISerialiseurVariablesSentier`.
+- [ ] (Optionnel) `IContexteUtilisateurSentier`, intercepteurs, `IHorlogeSentier`, `ISerialiseurVariablesSentier`.
