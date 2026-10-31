@@ -95,7 +95,13 @@ public sealed class TransactionRequiseException : SentierException
 {
     /// <summary>Crée l'exception.</summary>
     public TransactionRequiseException()
-        : base("Sentier exige une transaction active, fournie par le client via ISessionSentier. Sentier n'ouvre jamais de transaction lui-même.")
+        : base("Sentier exige une transaction active : une IDbTransaction fournie par le client via ISessionSentier, ou une transaction ambiante (TransactionScope). Sentier n'ouvre jamais de transaction lui-même.")
+    {
+    }
+
+    /// <summary>Crée l'exception avec un message précis.</summary>
+    public TransactionRequiseException(string message)
+        : base(message)
     {
     }
 }

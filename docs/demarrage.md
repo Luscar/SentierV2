@@ -131,6 +131,30 @@ Points à retenir :
 - Dans une application web, ce code va dans un middleware ou un filtre qui crée la portée de chaque requête.
 - Avec `Microsoft.Extensions.DependencyInjection`, alimenter plutôt `IAccesseurTransaction` dans la portée (voir le README, § 2).
 
+### Variante Oracle : transaction ambiante (`TransactionScope`)
+
+Si l'application n'utilise pas d'`IDbTransaction` (ses appels Dapper passent `transaction: null`) et rend ses
+écritures atomiques avec un `TransactionScope`, il suffit d'enregistrer la connexion :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+using var connexion = fabrique.Ouvrir();          // ouverte DANS la portée : elle y est enrôlée
+
+await using var scope = container.BeginLifetimeScope(b =>
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+- Sans `IDbTransaction`, Sentier exécute ses requêtes avec `transaction: null` sur la connexion enrôlée.
+- La connexion doit être ouverte **à l'intérieur** de la portée (sinon elle n'y est pas enrôlée), et
+  `TransactionScopeAsyncFlowOption.Enabled` est nécessaire avec `async`/`await`.
+- **Oracle seulement** : Microsoft.Data.Sqlite ne s'enrôle pas dans un `TransactionScope`. Avec SQLite, Sentier
+  refuse d'écrire (`TransactionRequiseException`) plutôt que de valider chaque instruction immédiatement ;
+  les tests SQLite fournissent une `IDbTransaction`.
+- Sans `IDbTransaction` ni `TransactionScope`, Sentier refuse toujours d'écrire (`TransactionRequiseException`).
+
 ## 6. Écrire un premier processus
 
 Une classe par processus. La clé (`"demande-conge"`) est celle utilisée pour démarrer une instance.
