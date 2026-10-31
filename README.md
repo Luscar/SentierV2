@@ -9,7 +9,7 @@ Les noms des objets de base suivent les mnémoniques de BpmPlus ; voir [docs/mne
 Exemple complet d'un processus parent composé de sous-processus (corrections, autorisation, délai, signaux), piloté par la seule clé d'affaire : [exemples/DeclarationSousProcessus](exemples/DeclarationSousProcessus/README.md).
 
 - **Exécution synchrone en chaîne** : les nœuds s'enchaînent jusqu'à une fin ou un nœud suspensif (attente, tâche, sous-processus).
-- **Une seule transaction, celle du client** : Sentier n'ouvre, ne valide et n'annule jamais de transaction.
+- **Une seule transaction, celle du client** (`TransactionScope` ou `IDbTransaction`) : Sentier n'ouvre, ne valide et n'annule jamais de transaction.
 - **Une instance = un processus + une clé d'affaire** (`long`).
 - **Persistance Dapper**, Oracle (production) et SQLite (tests), avec un préfixe configurable pour les objets.
 
@@ -57,9 +57,33 @@ Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (p
 
 ## 2. Connexion et transaction
 
-Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la portée et prend la transaction dans `IAccesseurTransactionSentier` si le client l'a alimenté, sinon l'`IDbTransaction` enregistrée dans la portée.
+Sentier obtient la connexion et la transaction par `ISessionSentier` (Scoped). L'implémentation par défaut résout l'`IDbConnection` de la portée et, **si le client en a une**, l'`IDbTransaction` (alimentée dans `IAccesseurTransactionSentier`, sinon enregistrée dans la portée). Les appels aux services ne prennent aucun paramètre de connexion.
 
-Le plus simple : enregistrer la connexion et la transaction dans la portée. Les appels aux services ne prennent ensuite aucun paramètre de connexion.
+Le client **doit** enregistrer l'`IDbConnection`. Pour la transaction, deux façons de faire sont équivalentes ; il suffit d'en utiliser une :
+
+| Mode | Le client fournit | Base |
+|---|---|---|
+| Transaction ambiante | `IDbConnection` seule, ouverte dans un `TransactionScope` | Oracle |
+| Transaction explicite | `IDbConnection` + `IDbTransaction` | Oracle, SQLite |
+
+**Transaction ambiante (`TransactionScope`).** C'est le cas d'une application dont les appels Dapper passent `transaction: null` : elle n'enregistre que sa connexion, aucune `IDbTransaction`. Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée.
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+using var connexion = _fabriqueConnexions.Ouvrir();                           // ouverte DANS la portée : enrôlée
+
+using var scope = _container.BeginLifetimeScope(b =>
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());       // le client en reste propriétaire
+
+var serviceSentier = scope.Resolve<IServiceSentier>();
+await serviceSentier.DemarrerAsync("demande-conge", cleAffaire: 42, ValeursVariables.Avec(DemandeConge.NbJours, 3L));
+
+portee.Complete();
+```
+
+La connexion doit être ouverte **à l'intérieur** de la portée, et `TransactionScopeAsyncFlowOption.Enabled` est nécessaire avec `async`. **Oracle seulement** : Microsoft.Data.Sqlite ne s'enrôle pas dans un `TransactionScope` ; avec SQLite, Sentier refuse d'écrire plutôt que de valider chaque instruction immédiatement.
+
+**Transaction explicite (`IDbTransaction`).** Si l'application ouvre elle-même une transaction (c'est le cas des tests SQLite), elle l'enregistre dans la portée avec la connexion :
 
 ```csharp
 using var connexion = _fabriqueConnexions.Ouvrir();
@@ -67,19 +91,16 @@ using var transaction = connexion.BeginTransaction();
 
 using var scope = _container.BeginLifetimeScope(b =>
 {
-    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();     // le client en reste propriétaire
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();
     b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();
 });
 
-var serviceSentier = scope.Resolve<IServiceSentier>();
-await serviceSentier.DemarrerAsync("demande-conge", cleAffaire: 42, ValeursVariables.Avec(DemandeConge.NbJours, 3L));
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42, ValeursVariables.Avec(DemandeConge.NbJours, 3L));
 
 transaction.Commit();
 ```
 
-Dans une application web, ce code va dans un middleware ou une fabrique qui crée la portée pour chaque requête. Avec SQLite, le schéma se crée de la même façon : `await scope.Resolve<InstallateurSchemaSentier>().InstallerAsync();`.
-
-Avec `Microsoft.Extensions.DependencyInjection`, alimenter `IAccesseurTransactionSentier` dans la portée :
+Avec `Microsoft.Extensions.DependencyInjection`, la transaction explicite s'alimente dans `IAccesseurTransactionSentier` (inutile avec un `TransactionScope`) :
 
 ```csharp
 using var scope = provider.CreateScope();
@@ -93,9 +114,11 @@ var resultat = await scope.ServiceProvider.GetRequiredService<IServiceSentier>()
 transaction.Commit();
 ```
 
+Dans une application web, ce code va dans un middleware ou une fabrique qui crée la portée pour chaque requête. Avec SQLite, le schéma se crée de la même façon : `await scope.Resolve<InstallateurSchemaSentier>().InstallerAsync();`.
+
 Pour brancher Sentier sur une unité de travail existante, fournir sa propre implémentation : `o.UtiliserSession<MaSession>()`.
 
-Les actions qui écrivent lèvent `TransactionRequiseException` sans transaction active. Une exception (commande, requête, conflit…) est **propagée** : c'est le client qui annule sa transaction.
+Les actions qui écrivent lèvent `TransactionRequiseException` sans transaction active (ni `IDbTransaction`, ni `TransactionScope`). Une exception (commande, requête, conflit…) est **propagée** : c'est le client qui annule sa transaction.
 
 ## 3. Écrire un processus
 
