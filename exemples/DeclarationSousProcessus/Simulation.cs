@@ -128,6 +128,12 @@ public sealed class GestionnaireTachesMemoire : IGestionnaireTaches
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct = default)
         => Changer(idTache, StatutTache.Completee, null);
 
+    public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct = default)
+    {
+        Journal.Ecrire($"Tâche {idTache} assignée à {utilisateur}");
+        return Task.CompletedTask;
+    }
+
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct = default)
         => Changer(idTache, StatutTache.Annulee, null);
 

@@ -201,6 +201,9 @@ public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Completee, ct);       // idempotent
 
+    public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct)
+        => depot.AssignerAsync(idTache, utilisateur, ct);
+
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Annulee, ct);         // idempotent
 

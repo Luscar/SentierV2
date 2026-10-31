@@ -69,6 +69,32 @@ internal sealed class ServiceSentier(
         return ResultatExecution.Depuis(execution.Instance);
     }
 
+    public async Task<ResultatExecution> AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(utilisateur);
+        session.ExigerTransaction();
+        var tache = await moteur.Taches.ObtenirTacheAsync(idTache, ct);
+        if (tache is null)
+        {
+            return ResultatExecution.Aucun($"Aucune tâche ne correspond à l'identifiant {idTache}.");
+        }
+
+        // Comme pour la complétion : seule la tâche que l'instance attend peut être assignée.
+        var instance = await instances.ObtenirAsync(tache.IdInstance, ct);
+        if (instance is null || !instance.EstAuRepos || instance.IdTacheCourante != idTache)
+        {
+            return ResultatExecution.Aucun($"L'instance n'attend pas la tâche {idTache}.", instance);
+        }
+
+        if (tache.Statut != StatutTache.Ouverte)
+        {
+            return ResultatExecution.Aucun($"La tâche {idTache} n'est plus ouverte.", instance);
+        }
+
+        await moteur.Taches.AssignerTacheAsync(idTache, utilisateur, ct);
+        return ResultatExecution.Depuis(instance);
+    }
+
     public Task<ResultatSignal> EnvoyerSignalAsync(string nomSignal, string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? chargeUtile = null, CancellationToken ct = default)
         => EnvoyerSignalAsync(new Signal { Nom = nomSignal, CleProcessus = cleProcessus, CleAffaire = cleAffaire, ChargeUtile = chargeUtile }, ct);
 

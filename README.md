@@ -185,6 +185,7 @@ Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COUR
 | `ObtenirTacheAsync(id)` | au début de `CompleterTacheAsync` (tâche inconnue ou non ouverte → `SansEffet`) |
 | `ObtenirTachesOuvertesAsync(idInstance)` | annulation, reprise d'une instance en erreur, migration, suivi |
 | `CompleterTacheAsync(id, données, utilisateur)` | après la fusion des données et les commandes de sortie |
+| `AssignerTacheAsync(id, utilisateur)` | `IServiceSentier.AssignerTacheAsync`, seulement pour la tâche que l'instance attend (sinon `SansEffet`) |
 | `AnnulerTacheAsync(id, motif)` | annulation de l'instance (et de ses enfants), migration avec reprise à un autre nœud |
 | `RenommerNoeudAsync(idInstance, ancien, nouveau)` | migration qui renomme le nœud interactif courant |
 
@@ -197,7 +198,7 @@ public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Completee, utilisateur, ct);
 
-    // ObtenirTacheAsync, ObtenirTachesOuvertesAsync, AnnulerTacheAsync, RenommerNoeudAsync…
+    // ObtenirTacheAsync, ObtenirTachesOuvertesAsync, AssignerTacheAsync, AnnulerTacheAsync, RenommerNoeudAsync…
 }
 ```
 
@@ -207,6 +208,7 @@ Exigences sur l'implémentation :
 
 - **Même transaction** que Sentier si elle est en base (même session). Sinon, les cas ci-dessus restent cohérents, mais une tâche orpheline reste visible chez le client jusqu'à la sortie du nœud.
 - **Idempotence** de `CompleterTacheAsync` et `AnnulerTacheAsync` : elles peuvent être rappelées pour une tâche déjà complétée ou annulée.
+- L'assignation initiale est dans la demande de création (`Role`, `Utilisateur`) ; une réassignation passe par `IServiceSentier.AssignerTacheAsync(idTache, utilisateur)`, qui vérifie que l'instance attend bien cette tâche avant d'appeler le gestionnaire.
 - `ObtenirTachesOuvertesAsync` est aussi appelée par `ISuiviSentier`, éventuellement sans transaction. Le client complète une tâche par `IServiceSentier.CompleterTacheAsync(idTache, données, utilisateur)` : les données sont fusionnées pour les seules variables déclarées, les commandes de sortie s'exécutent, puis Sentier demande au gestionnaire de marquer la tâche complétée.
 
 ### Mise à jour d'une base existante
