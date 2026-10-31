@@ -10,5 +10,7 @@ internal sealed class BrancheEnConstruction(string nomSortie)
 
     public AppelRequete? Requete { get; init; }
 
+    public ConditionVariable? Condition { get; init; }
+
     public bool EstSinon { get; init; }
 }

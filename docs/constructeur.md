@@ -138,7 +138,31 @@ Après une `Fin` ou un `Vers`, le nœud suivant n'est **pas** relié automatique
     .Sinon("refusee"))
 ```
 
-Les requêtes sont évaluées dans l'ordre ; la première vraie gagne, sinon `Sinon`. Au moins un `Si`/`SiPas` et exactement un `Sinon`.
+Une branche peut aussi tester **une variable directement**, sans écrire de requête :
+
+```csharp
+.Decision("aiguiller", d => d
+    .Si(Montant).SuperieurA(10_000m).Vers("approbation-direction")   // valeur fixe
+    .Si(Urgent).EstVrai().Vers("traitement-urgent")
+    .Si(Decision).EgalA("refusee").Alors(b => b.Fin("refusee"))
+    .Si(NbJours).SuperieurA(Solde).Nommee("solde-insuffisant")       // autre variable
+    .Si(Commentaire).EstRenseignee().Vers("relire")
+    .Sinon())
+```
+
+| Opérateur | Types acceptés |
+|---|---|
+| `EgalA`, `DifferentDe` | tous sauf JSON |
+| `SuperieurA`, `SuperieurOuEgalA`, `InferieurA`, `InferieurOuEgalA` | entier, décimal, date, texte (ordre ordinal) |
+| `Contient`, `CommencePar` | texte (sensible à la casse) |
+| `EstVrai`, `EstFaux` | booléen |
+| `EstRenseignee`, `EstVide` | tous |
+
+Un entier et un décimal se comparent entre eux. Une variable sans valeur ne satisfait que `EstVide` et `DifferentDe`. `EgalA(null)` équivaut à `EstVide()`. Sans le constructeur typé : `.SiVariable("montant", OperateurComparaison.Superieur, 10_000m)`.
+
+La sortie d'une condition porte son expression (`montant > 10000`), visible dans l'historique et le diagramme ; `.Nommee(…)` lui donne un nom stable, à préférer si la valeur peut changer d'une version à l'autre.
+
+Requêtes et conditions sont évaluées dans l'ordre de déclaration ; la première vraie gagne, sinon `Sinon`. Au moins une branche conditionnelle (`Si`/`SiPas`/condition sur variable) et exactement un `Sinon`.
 
 ### Attente : échéance et/ou signaux
 
@@ -269,6 +293,7 @@ La construction vérifie toute la définition et lève `DefinitionInvalideExcept
 - codes de nœuds uniques, un début, au moins une fin ;
 - liens vers des codes existants, tous les nœuds atteignables, chaque nœud a une sortie ;
 - décision : au moins une branche conditionnelle et exactement un « sinon » ;
+- condition sur variable : variable (et variable de comparaison) déclarée, opérateur applicable au type, valeur du même type (entier et décimal se mélangent) ;
 - attente : au moins un déclencheur, au plus une échéance ;
 - noms de sortie uniques par nœud ;
 - branche avec deux destinations, `Alors`/`Vers`/`Nommee` sans branche avant ;
@@ -317,6 +342,8 @@ public sealed class MonProcessus : DefinitionSentier
         .Decision("code", d => d
             .Si<Requete>([p => …])[.Nommee("…")][.Alors(b => …) | .Vers("code")]
             .SiPas<Requete>([p => …])…
+            .Si(Variable).EgalA(v | V2) | DifferentDe | SuperieurA | SuperieurOuEgalA | InferieurA | InferieurOuEgalA
+                         | Contient("…") | CommencePar("…") | EstVrai() | EstFaux() | EstRenseignee() | EstVide()…
             .Sinon([b => … | "code"]))
         .Attente("code", a => a
             [.CommandeEntree<…>()]

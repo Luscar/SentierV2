@@ -172,6 +172,7 @@ public abstract class ConstructeurSequence<TSelf> where TSelf : ConstructeurSequ
                 {
                     Lien = declaree.Lien,
                     Requete = declaree.Requete,
+                    Condition = declaree.Condition,
                     EstSinon = declaree.EstSinon,
                 };
 

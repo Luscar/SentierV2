@@ -205,6 +205,7 @@ public sealed class ConstructeurProcessus : ConstructeurSequence<ConstructeurPro
                         Destination = destination,
                         NomSortie = branche.NomSortie,
                         Requete = branche.Requete,
+                        Condition = branche.Condition,
                         EstSinon = branche.EstSinon,
                     });
                 }

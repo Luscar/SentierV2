@@ -318,8 +318,10 @@ Tous les appels se font dans une portée qui porte la connexion et la transactio
 | Réassigner une tâche | `IServiceSentier.AssignerTacheAsync(idTache, utilisateur)` |
 | Envoyer un signal | `IServiceSentier.EnvoyerSignalAsync(nomSignal, cleProcessus, cleAffaire)` ou `EnvoyerSignalCorrelationAsync` |
 | Annuler une instance | `IServiceSentier.AnnulerAsync(idInstance, motif)` |
+| Corriger des variables | `IServiceSentier.ModifierVariablesAsync(idInstance, valeurs, utilisateur)` (instance suspendue ou en erreur) |
+| Rechercher par variables | `ISuiviSentier.RechercherParVariablesAsync(recherche)` ou `RechercherParVariableAsync(cleProcessus, variable, valeur)` |
 | Batch des échéances | `ObtenirEcheancesDuesAsync`, puis `TraiterEcheanceAsync` par échéance, chacune dans sa transaction ; `MarquerEnErreurAsync` en cas d'échec |
-| Consulter | `ISuiviSentier` : instance, historique, attentes, tâches ouvertes, instances en erreur, diagramme |
+| Consulter | `ISuiviSentier` : instance, recherche par clé d'affaire ou par variables, historique, attentes, tâches ouvertes, instances en erreur, diagramme |
 
 Les cas « rien à faire » (tâche déjà complétée, signal sans destinataire…) retournent `SansEffet` sans exception.
 Les vraies erreurs sont propagées : la transaction du client n'est pas validée.

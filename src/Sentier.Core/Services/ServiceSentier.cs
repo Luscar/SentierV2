@@ -95,6 +95,46 @@ internal sealed class ServiceSentier(
         return ResultatExecution.Depuis(instance);
     }
 
+    public async Task<ResultatExecution> ModifierVariablesAsync(IdInstance idInstance, IReadOnlyDictionary<string, object?> valeurs, string? utilisateur = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(valeurs);
+        session.ExigerTransaction();
+        var instance = await instances.ObtenirAsync(idInstance, ct);
+        if (instance is null)
+        {
+            return ResultatExecution.Aucun($"L'instance {idInstance} est introuvable.");
+        }
+
+        if (!instance.EstAuRepos)
+        {
+            return ResultatExecution.Aucun(
+                instance.EstActive
+                    ? $"L'instance {idInstance} est en cours d'exécution : ses variables ne peuvent pas être modifiées."
+                    : $"L'instance {idInstance} est {(instance.Statut == StatutInstance.Terminee ? "terminée" : "annulée")}.",
+                instance);
+        }
+
+        if (valeurs.Count == 0)
+        {
+            return ResultatExecution.Aucun("Aucune variable à modifier.", instance);
+        }
+
+        var definition = await definitions.ObtenirAsync(instance.IdDefinition, ct);
+        var variables = moteur.ChargerVariables(instance, definition);
+        foreach (var (nom, valeur) in valeurs)
+        {
+            if (valeur is null && definition.Declarations.TryGetValue(nom, out var declaration) && declaration.Obligatoire)
+            {
+                throw new VariableInvalideException($"La variable obligatoire '{nom}' ne peut pas être effacée.");
+            }
+
+            variables.Ecrire(nom, valeur);
+        }
+
+        await moteur.EnregistrerVariablesAsync(instance, variables, valeurs.Keys, utilisateur ?? moteur.UtilisateurCourant, ct);
+        return ResultatExecution.Depuis(instance);
+    }
+
     public Task<ResultatSignal> EnvoyerSignalAsync(string nomSignal, string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? chargeUtile = null, CancellationToken ct = default)
         => EnvoyerSignalAsync(new Signal { Nom = nomSignal, CleProcessus = cleProcessus, CleAffaire = cleAffaire, ChargeUtile = chargeUtile }, ct);
 

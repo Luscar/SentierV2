@@ -99,6 +99,38 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
             ct);
     }
 
+    public Task<IReadOnlyList<InstanceProcessus>> ObtenirLotParProcessusAsync(
+        string cleProcessus,
+        IReadOnlyCollection<StatutInstance>? statuts,
+        IReadOnlyList<string> motifsVariables,
+        IdInstance? avant,
+        int taille,
+        CancellationToken ct)
+    {
+        var parametres = new DynamicParameters();
+        parametres.Add("cle", cleProcessus);
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE CLE_DEFIN = @cle";
+        if (statuts is { Count: > 0 })
+        {
+            requete += " AND STAT IN @statuts";
+            parametres.Add("statuts", statuts.Select(CodesBase.Code).ToArray());
+        }
+
+        if (avant is { } id)
+        {
+            requete += " AND NO_SEQ_INSTC_PROCS < @avant";
+            parametres.Add("avant", id.Valeur);
+        }
+
+        for (var i = 0; i < motifsVariables.Count; i++)
+        {
+            requete += $" AND VAR_JSON LIKE @motif{i} ESCAPE '\\'";
+            parametres.Add($"motif{i}", motifsVariables[i]);
+        }
+
+        return ListerAsync(sql.Dialecte.Limiter(requete + " ORDER BY NO_SEQ_INSTC_PROCS DESC", taille), parametres, ct);
+    }
+
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirEnfantsActifsAsync(IdInstance idParent, CancellationToken ct)
         => ListerAsync(
             $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTC_PARN = @id AND STAT IN {CodesBase.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",

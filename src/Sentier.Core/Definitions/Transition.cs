@@ -15,6 +15,9 @@ public sealed class Transition
     /// <summary>Requête d'une branche conditionnelle de décision.</summary>
     public AppelRequete? Requete { get; init; }
 
+    /// <summary>Condition sur variable d'une branche conditionnelle de décision (à la place d'une requête).</summary>
+    public ConditionVariable? Condition { get; init; }
+
     /// <summary>Vrai pour la branche « sinon » d'une décision.</summary>
     public bool EstSinon { get; init; }
 }

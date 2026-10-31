@@ -139,7 +139,7 @@ Le guide complet du constructeur (nœuds, branches, paramètres, tableau des dé
 
 ## 4. Commandes et requêtes
 
-Toute mise à jour métier passe par une **commande** ; chaque branche conditionnelle d'une décision est évaluée par une **requête** (lecture seule). Les deux sont découvertes par balayage d'assemblys, enregistrées en Scoped, référencées par nom (celui de la classe, ou de l'attribut `[CommandeSentier("nom")]` / `[RequeteSentier("nom")]`) et peuvent injecter leurs propres services : elles travaillent dans la même transaction.
+Toute mise à jour métier passe par une **commande** ; chaque branche conditionnelle d'une décision est évaluée par une **requête** (lecture seule), ou directement par une condition sur variable (`.Si(Montant).SuperieurA(1000m)`, voir [docs/constructeur.md](docs/constructeur.md)). Commandes et requêtes sont découvertes par balayage d'assemblys, enregistrées en Scoped, référencées par nom (celui de la classe, ou de l'attribut `[CommandeSentier("nom")]` / `[RequeteSentier("nom")]`) et peuvent injecter leurs propres services : elles travaillent dans la même transaction.
 
 ```csharp
 public sealed class CalculerSolde(IDepotEmployes employes) : ICommandeSentier
@@ -292,11 +292,42 @@ private static async Task EnTransactionAsync(IServiceProvider provider, Func<ISe
 
 `ReprendreAsync` relance une instance `EnErreur` : si elle attend encore (attente, tâche, enfant), elle redevient `Suspendue` et une échéance déjà atteinte est traitée tout de suite ; sinon son nœud courant est réexécuté. Toutes les dates sont en UTC (`IHorloge`).
 
-## 9. Idempotence
+## 9. Variables : recherche et correction
 
-Ces cas retournent un résultat `SansEffet` avec sa raison, sans lever d'erreur : tâche déjà complétée ou annulée (ou identifiant inconnu), échéance déjà traitée ou gagnée par un signal, signal sans instance en attente, démarrage d'un processus déjà actif pour la clé, annulation d'une instance terminée ou annulée.
+**Rechercher** les instances d'un processus par la valeur de leurs variables (toutes versions, des plus récentes aux plus anciennes) :
 
-## 10. Choix d'implémentation
+```csharp
+var suivi = scope.Resolve<ISuiviSentier>();
+
+// Égalité simple
+var instances = await suivi.RechercherParVariableAsync("demande-conge", DemandeConge.Decision, "refusee");
+
+// Plusieurs filtres (ET), statuts et taille maximale
+var longues = await suivi.RechercherParVariablesAsync(new RechercheParVariables
+{
+    CleProcessus = "demande-conge",
+    Filtres = [FiltreVariable.SuperieurOuEgal(DemandeConge.NbJours, 10L), FiltreVariable.EstVide(DemandeConge.Decision)],
+    Statuts = [StatutInstance.Suspendue],
+    TailleMax = 50,
+});
+```
+
+Les opérateurs sont ceux des décisions (`Egal`, `Different`, `Superieur`…, `Contient`, `CommencePar`, `EstRenseignee`, `EstVide`) ; la valeur est convertie dans le type déclaré par la version de chaque instance, et un filtre incompatible lève `ArgumentException`. Les variables étant stockées en JSON (`VAR_JSON`), Sentier préfiltre en base par `LIKE` (avec le sérialiseur par défaut), puis applique le filtre exact en lisant les instances par lots : la recherche reste bornée par `TailleMax`, mais un filtre peu sélectif sur un gros processus parcourt beaucoup de lignes. Filtrer par statut aide.
+
+**Corriger** des variables d'une instance suspendue ou en erreur, sans la faire avancer :
+
+```csharp
+await serviceSentier.ModifierVariablesAsync(idInstance, ValeursVariables.Avec(DemandeConge.NbJours, 5L), utilisateur: "jdoe");
+transaction.Commit();
+```
+
+Chaque variable doit être déclarée et du bon type ; `null` efface une variable non obligatoire. L'instance est mise à jour sous verrou optimiste et la modification est journalisée (`ILogger`). Les valeurs déjà calculées à l'entrée du nœud courant (échéance, clé de corrélation, données de la tâche) ne sont pas recalculées : la nouvelle valeur sert aux nœuds suivants, ou au nœud courant s'il est relancé (`ReprendreAsync` d'une instance en erreur). Instance terminée, annulée ou introuvable : `SansEffet`.
+
+## 10. Idempotence
+
+Ces cas retournent un résultat `SansEffet` avec sa raison, sans lever d'erreur : tâche déjà complétée ou annulée (ou identifiant inconnu), échéance déjà traitée ou gagnée par un signal, signal sans instance en attente, démarrage d'un processus déjà actif pour la clé, annulation d'une instance terminée ou annulée, modification des variables d'une instance terminée ou annulée.
+
+## 11. Choix d'implémentation
 
 Points non tranchés par la spécification, résolus au plus simple :
 

@@ -21,6 +21,19 @@ public interface IDepotInstances
     /// <summary>Instances d'une clé d'affaire pour une ou plusieurs clés de processus.</summary>
     Task<IReadOnlyList<InstanceProcessus>> RechercherAsync(long cleAffaire, IReadOnlyCollection<string> clesProcessus, IReadOnlyCollection<StatutInstance>? statuts, CancellationToken ct);
 
+    /// <summary>
+    /// Lot d'instances d'un processus, des plus récentes aux plus anciennes, pour une recherche par variables.
+    /// <paramref name="motifsVariables"/> sont des motifs <c>LIKE</c> (échappement <c>\</c>) que le contenu
+    /// des variables doit tous respecter : un préfiltre sans faux négatif, le filtre exact est appliqué ensuite.
+    /// </summary>
+    Task<IReadOnlyList<InstanceProcessus>> ObtenirLotParProcessusAsync(
+        string cleProcessus,
+        IReadOnlyCollection<StatutInstance>? statuts,
+        IReadOnlyList<string> motifsVariables,
+        IdInstance? avant,
+        int taille,
+        CancellationToken ct);
+
     /// <summary>Enfants actifs d'une instance.</summary>
     Task<IReadOnlyList<InstanceProcessus>> ObtenirEnfantsActifsAsync(IdInstance idParent, CancellationToken ct);
 

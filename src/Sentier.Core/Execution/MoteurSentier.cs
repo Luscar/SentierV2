@@ -224,6 +224,17 @@ internal sealed class MoteurSentier
         _logger.LogWarning("Sentier : instance {IdInstance} ({CleProcessus}) marquée en erreur sur le nœud {CodeNoeud}.", instance.Id, instance.CleProcessus, instance.CodeNoeudCourant);
     }
 
+    /// <summary>Enregistre les variables modifiées d'une instance au repos, sans exécuter de nœud.</summary>
+    internal async Task EnregistrerVariablesAsync(InstanceProcessus instance, VariablesProcessus variables, IEnumerable<string> noms, string? utilisateur, CancellationToken ct)
+    {
+        instance.VariablesJson = SerialiserVariables(variables);
+        instance.DateMaj = Horloge.MaintenantUtc;
+        await _instances.MettreAJourAsync(instance, ct);
+        _logger.LogInformation(
+            "Sentier : variables {Variables} de l'instance {IdInstance} ({CleProcessus}) modifiées par {Utilisateur} sur le nœud {CodeNoeud}.",
+            string.Join(", ", noms), instance.Id, instance.CleProcessus, utilisateur ?? "(inconnu)", instance.CodeNoeudCourant);
+    }
+
     /// <summary>Remet au repos (suspendue) une instance en erreur qui attend encore un déclencheur, une tâche ou un enfant.</summary>
     internal async Task RemettreAuReposAsync(InstanceProcessus instance, CancellationToken ct)
     {
