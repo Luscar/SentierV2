@@ -1,6 +1,6 @@
 # Guide de démarrage
 
-> Tous les contrats à implémenter côté client et leur enregistrement sont résumés dans [Intégrer Sentier dans une application client](integration-client.md).
+> Tous les contrats à implémenter côté client et leur enregistrement sont résumés dans [Intégrer Sentier dans une application client](integration-client.md). La référence complète, à copier dans le projet client, est le [guide du projet client](guide-projet-client.md).
 
 Ce guide mène une application cliente de l'installation au premier processus exécuté. Les détails sont dans le [README](../README.md) ; l'écriture des processus, dans le [guide du constructeur](constructeur.md).
 
