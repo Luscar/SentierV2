@@ -84,7 +84,7 @@ public static class ValidateurDefinition
                     break;
 
                 case NoeudDecision:
-                    if (!sorties.Any(t => t.Requete is not null))
+                    if (!sorties.Any(t => t.Requete is not null || t.Condition is not null))
                     {
                         erreurs.Add($"La décision '{noeud.Code}' doit avoir au moins une branche conditionnelle.");
                     }
@@ -97,6 +97,11 @@ public static class ValidateurDefinition
                     foreach (var transition in sorties.Where(t => t.Requete is not null))
                     {
                         ValiderAppel(definition, transition.Requete!.Nom, transition.Requete.Parametres, $"requête de la branche '{transition.NomSortie}' du nœud '{noeud.Code}'", erreurs);
+                    }
+
+                    foreach (var transition in sorties.Where(t => t.Condition is not null))
+                    {
+                        ValiderCondition(definition, transition.Condition!, $"condition de la branche '{transition.NomSortie}' du nœud '{noeud.Code}'", erreurs);
                     }
 
                     break;
@@ -263,6 +268,78 @@ public static class ValidateurDefinition
             }
         }
     }
+
+    private static void ValiderCondition(DefinitionProcessus definition, ConditionVariable condition, string contexte, List<string> erreurs)
+    {
+        if (!definition.Declarations.TryGetValue(condition.Variable, out var declaration))
+        {
+            erreurs.Add($"La variable '{condition.Variable}' ({contexte}) n'est pas déclarée.");
+            return;
+        }
+
+        if (ConditionVariable.EstUnaire(condition.Operateur))
+        {
+            if (condition.Valeur is not null || condition.VariableComparee is not null)
+            {
+                erreurs.Add($"L'opérateur {condition.Operateur} ({contexte}) n'attend pas de valeur de comparaison.");
+            }
+
+            return;
+        }
+
+        if ((condition.Valeur is null) == (condition.VariableComparee is null))
+        {
+            erreurs.Add($"L'opérateur {condition.Operateur} ({contexte}) exige soit une valeur, soit une variable de comparaison.");
+            return;
+        }
+
+        if (OperateurIncompatible(condition.Operateur, declaration.Type) is { } raison)
+        {
+            erreurs.Add($"L'opérateur {condition.Operateur} ({contexte}) ne s'applique pas à la variable '{condition.Variable}' de type {declaration.Type} : {raison}.");
+            return;
+        }
+
+        TypeVariable typeOperande;
+        string libelleOperande;
+        if (condition.VariableComparee is { } comparee)
+        {
+            if (!definition.Declarations.TryGetValue(comparee, out var declarationComparee))
+            {
+                erreurs.Add($"La variable de comparaison '{comparee}' ({contexte}) n'est pas déclarée.");
+                return;
+            }
+
+            typeOperande = declarationComparee.Type;
+            libelleOperande = $"la variable '{comparee}'";
+        }
+        else
+        {
+            typeOperande = condition.Valeur!.Type;
+            libelleOperande = "la valeur";
+        }
+
+        if (!OperandesCompatibles(declaration.Type, typeOperande))
+        {
+            erreurs.Add($"La variable '{condition.Variable}' ({contexte}) est de type {declaration.Type} ; {libelleOperande} de comparaison est de type {typeOperande}.");
+        }
+    }
+
+    /// <summary>Raison pour laquelle un opérateur binaire ne s'applique pas à un type, ou <c>null</c>.</summary>
+    internal static string? OperateurIncompatible(OperateurComparaison operateur, TypeVariable type) => operateur switch
+    {
+        _ when ConditionVariable.EstUnaire(operateur) => null,
+        _ when type == TypeVariable.Json => "une variable JSON ne se teste que par EstRenseignee ou EstVide",
+        OperateurComparaison.Contient or OperateurComparaison.CommencePar when type != TypeVariable.Texte => "réservé aux variables texte",
+        OperateurComparaison.Superieur or OperateurComparaison.SuperieurOuEgal or OperateurComparaison.Inferieur or OperateurComparaison.InferieurOuEgal
+            when type == TypeVariable.Booleen => "un booléen ne se compare que par égalité",
+        _ => null,
+    };
+
+    /// <summary>Un entier et un décimal se comparent entre eux ; les autres types seulement avec eux-mêmes.</summary>
+    internal static bool OperandesCompatibles(TypeVariable variable, TypeVariable operande)
+        => variable == operande || (Numerique(variable) && Numerique(operande));
+
+    private static bool Numerique(TypeVariable type) => type is TypeVariable.Entier or TypeVariable.Decimal;
 
     private static void ValiderVariable(DefinitionProcessus definition, string nom, TypeVariable? typeAttendu, string contexte, List<string> erreurs)
     {

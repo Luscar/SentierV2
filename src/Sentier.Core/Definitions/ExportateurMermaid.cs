@@ -108,6 +108,12 @@ public static class ExportateurMermaid
             return transition.NomSortie == parDefaut ? condition : $"{transition.NomSortie} : {condition}";
         }
 
+        if (transition.Condition is not null)
+        {
+            var expression = transition.Condition.Expression();
+            return transition.NomSortie == ConstructeurDecision.NomSortieParDefaut(transition.Condition) ? expression : $"{transition.NomSortie} : {expression}";
+        }
+
         return transition.NomSortie;
     }
 
@@ -122,5 +128,5 @@ public static class ExportateurMermaid
         return sb.ToString();
     }
 
-    private static string Echapper(string texte) => texte.Replace("\"", "#quot;").Replace("|", "#124;");
+    private static string Echapper(string texte) => texte.Replace("\"", "#quot;").Replace("|", "#124;").Replace("<", "#lt;").Replace(">", "#gt;");
 }

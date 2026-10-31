@@ -11,7 +11,7 @@ namespace Sentier.Persistance.Oracle;
 public sealed class DialecteOracle : DialecteSqlBase
 {
     /// <inheritdoc />
-    public override DialecteBase Type => DialecteBase.Oracle;
+    public override TypeBaseDonnees Type => TypeBaseDonnees.Oracle;
 
     /// <inheritdoc />
     public override string VerrouillageSansAttente => " FOR UPDATE SKIP LOCKED";

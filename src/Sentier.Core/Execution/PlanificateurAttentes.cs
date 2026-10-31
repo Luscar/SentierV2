@@ -6,7 +6,7 @@ using Sentier.Variables;
 namespace Sentier.Execution;
 
 /// <summary>Création des lignes d'attente (une par déclencheur) d'un nœud d'attente.</summary>
-internal sealed class PlanificateurAttentes(IDepotAttentes depot, IHorloge horloge)
+internal sealed class PlanificateurAttentes(IDepotAttentes depot, IHorlogeSentier horloge)
 {
     public async Task CreerAsync(InstanceProcessus instance, NoeudAttente noeud, IVariablesLecture variables, IEnumerable<Declencheur> declencheurs, CancellationToken ct)
     {

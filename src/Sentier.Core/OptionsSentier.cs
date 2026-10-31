@@ -16,13 +16,13 @@ public sealed partial class OptionsSentier
     public int MaxEtapesParExecution { get; set; } = 1000;
 
     /// <summary>Dialecte SQL de la base.</summary>
-    public DialecteBase Dialecte { get; set; } = DialecteBase.Oracle;
+    public TypeBaseDonnees Dialecte { get; set; } = TypeBaseDonnees.Oracle;
 
     /// <summary>Assemblys balayés pour trouver commandes, requêtes, définitions, plans de migration et gestionnaire de tâches.</summary>
     public List<Assembly> Assemblys { get; } = [];
 
     /// <summary>
-    /// Implémentation de <see cref="IGestionnaireTaches"/> à enregistrer (Scoped). Si elle n'est pas fournie,
+    /// Implémentation de <see cref="IGestionnaireTachesSentier"/> à enregistrer (Scoped). Si elle n'est pas fournie,
     /// celle trouvée par balayage est utilisée.
     /// </summary>
     public Type? TypeGestionnaireTaches { get; private set; }
@@ -33,14 +33,14 @@ public sealed partial class OptionsSentier
     /// <summary>Utilise le dialecte Oracle.</summary>
     public OptionsSentier UtiliserOracle()
     {
-        Dialecte = DialecteBase.Oracle;
+        Dialecte = TypeBaseDonnees.Oracle;
         return this;
     }
 
     /// <summary>Utilise le dialecte SQLite.</summary>
     public OptionsSentier UtiliserSqlite()
     {
-        Dialecte = DialecteBase.Sqlite;
+        Dialecte = TypeBaseDonnees.Sqlite;
         return this;
     }
 
@@ -73,7 +73,7 @@ public sealed partial class OptionsSentier
     public OptionsSentier BalayerAssemblyDe<T>() => Balayer(typeof(T).Assembly);
 
     /// <summary>Enregistre l'implémentation du gestionnaire de tâches du client, à la place de celle trouvée par balayage.</summary>
-    public OptionsSentier UtiliserGestionnaireTaches<T>() where T : class, IGestionnaireTaches
+    public OptionsSentier UtiliserGestionnaireTaches<T>() where T : class, IGestionnaireTachesSentier
     {
         TypeGestionnaireTaches = typeof(T);
         return this;

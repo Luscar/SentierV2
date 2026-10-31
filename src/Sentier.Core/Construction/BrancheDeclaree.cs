@@ -11,5 +11,7 @@ internal sealed class BrancheDeclaree(string nomSortie)
 
     public AppelRequete? Requete { get; init; }
 
+    public ConditionVariable? Condition { get; init; }
+
     public bool EstSinon { get; init; }
 }

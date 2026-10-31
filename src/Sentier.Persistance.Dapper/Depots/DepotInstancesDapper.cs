@@ -33,7 +33,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
                 codeNoeudParent = instance.CodeNoeudParent,
                 cleAffaire = instance.CleAffaire,
                 instanceUnique = Booleen(instance.InstanceUnique),
-                statut = CodesBase.Code(instance.Statut),
+                statut = CodesBaseDonnees.Code(instance.Statut),
                 codeFin = instance.CodeFin,
                 codeNoeudCourant = instance.CodeNoeudCourant,
                 idTacheCourante = instance.IdTacheCourante,
@@ -58,7 +58,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
             {
                 id = instance.Id.Valeur,
                 idDefinition = instance.IdDefinition.Valeur,
-                statut = CodesBase.Code(instance.Statut),
+                statut = CodesBaseDonnees.Code(instance.Statut),
                 codeFin = instance.CodeFin,
                 codeNoeudCourant = instance.CodeNoeudCourant,
                 idTacheCourante = instance.IdTacheCourante,
@@ -81,7 +81,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirActivesAsync(string cleProcessus, long cleAffaire, CancellationToken ct)
         => ListerAsync(
-            $"SELECT {Colonnes} FROM {Table} WHERE CLE_DEFIN = @cle AND AGGRE_ID = @cleAffaire AND STAT IN {CodesBase.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
+            $"SELECT {Colonnes} FROM {Table} WHERE CLE_DEFIN = @cle AND AGGRE_ID = @cleAffaire AND STAT IN {CodesBaseDonnees.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
             new { cle = cleProcessus, cleAffaire },
             ct);
 
@@ -95,13 +95,45 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
         return ListerAsync(
             requete + " ORDER BY NO_SEQ_INSTC_PROCS",
-            new { cleAffaire, cles = clesProcessus.ToArray(), statuts = statuts?.Select(CodesBase.Code).ToArray() ?? [] },
+            new { cleAffaire, cles = clesProcessus.ToArray(), statuts = statuts?.Select(CodesBaseDonnees.Code).ToArray() ?? [] },
             ct);
+    }
+
+    public Task<IReadOnlyList<InstanceProcessus>> ObtenirLotParProcessusAsync(
+        string cleProcessus,
+        IReadOnlyCollection<StatutInstance>? statuts,
+        IReadOnlyList<string> motifsVariables,
+        IdInstance? avant,
+        int taille,
+        CancellationToken ct)
+    {
+        var parametres = new DynamicParameters();
+        parametres.Add("cle", cleProcessus);
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE CLE_DEFIN = @cle";
+        if (statuts is { Count: > 0 })
+        {
+            requete += " AND STAT IN @statuts";
+            parametres.Add("statuts", statuts.Select(CodesBaseDonnees.Code).ToArray());
+        }
+
+        if (avant is { } id)
+        {
+            requete += " AND NO_SEQ_INSTC_PROCS < @avant";
+            parametres.Add("avant", id.Valeur);
+        }
+
+        for (var i = 0; i < motifsVariables.Count; i++)
+        {
+            requete += $" AND VAR_JSON LIKE @motif{i} ESCAPE '\\'";
+            parametres.Add($"motif{i}", motifsVariables[i]);
+        }
+
+        return ListerAsync(sql.Dialecte.Limiter(requete + " ORDER BY NO_SEQ_INSTC_PROCS DESC", taille), parametres, ct);
     }
 
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirEnfantsActifsAsync(IdInstance idParent, CancellationToken ct)
         => ListerAsync(
-            $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTC_PARN = @id AND STAT IN {CodesBase.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
+            $"SELECT {Colonnes} FROM {Table} WHERE ID_INSTC_PARN = @id AND STAT IN {CodesBaseDonnees.StatutsActifs} ORDER BY NO_SEQ_INSTC_PROCS",
             new { id = idParent.Valeur },
             ct);
 
@@ -116,16 +148,25 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
         var lignes = await sql.Connexion.QueryAsync<LigneCompte>(sql.Lecture(
             $"SELECT i.NO_SEQ_DEFIN_PROCS AS NO_SEQ_DEFIN_PROCS, d.VERSI AS VERSI, i.ID_NOEUD_COUR AS ID_NOEUD, COUNT(*) AS NOMBRE " +
             $"FROM {Table} i JOIN {sql.Noms.Definition} d ON d.NO_SEQ_DEFIN_PROCS = i.NO_SEQ_DEFIN_PROCS " +
-            $"WHERE i.CLE_DEFIN = @cle AND i.STAT IN {CodesBase.StatutsActifs} " +
+            $"WHERE i.CLE_DEFIN = @cle AND i.STAT IN {CodesBaseDonnees.StatutsActifs} " +
             "GROUP BY i.NO_SEQ_DEFIN_PROCS, d.VERSI, i.ID_NOEUD_COUR ORDER BY d.VERSI, i.ID_NOEUD_COUR",
             new { cle = cleProcessus },
             ct));
         return lignes.Select(l => new CompteInstancesActives(new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l.VERSI, l.ID_NOEUD, l.NOMBRE)).ToList();
     }
 
+    public async Task<IReadOnlyDictionary<IdDefinition, int>> CompterActivesParVersionAsync(CancellationToken ct)
+    {
+        var lignes = await sql.Connexion.QueryAsync<LigneCompteVersion>(sql.Lecture(
+            $"SELECT NO_SEQ_DEFIN_PROCS, COUNT(*) AS NOMBRE FROM {Table} WHERE STAT IN {CodesBaseDonnees.StatutsActifs} GROUP BY NO_SEQ_DEFIN_PROCS",
+            null,
+            ct));
+        return lignes.ToDictionary(l => new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l => l.NOMBRE);
+    }
+
     public Task<IReadOnlyList<InstanceProcessus>> ObtenirAuReposAsync(IdDefinition idDefinition, string? codeNoeud, int taille, CancellationToken ct)
     {
-        var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_DEFIN_PROCS = @id AND STAT IN {CodesBase.StatutsAuRepos}";
+        var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_DEFIN_PROCS = @id AND STAT IN {CodesBaseDonnees.StatutsAuRepos}";
         if (codeNoeud is not null)
         {
             requete += " AND ID_NOEUD_COUR = @code";
@@ -136,12 +177,19 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     public Task RenommerNoeudParentAsync(IdInstance idParent, string ancienCode, string nouveauCode, CancellationToken ct)
         => sql.Connexion.ExecuteAsync(sql.Ecriture(
-            $"UPDATE {Table} SET ID_NOEUD_PARN = @nouveau WHERE ID_INSTC_PARN = @id AND ID_NOEUD_PARN = @ancien AND STAT IN {CodesBase.StatutsActifs}",
+            $"UPDATE {Table} SET ID_NOEUD_PARN = @nouveau WHERE ID_INSTC_PARN = @id AND ID_NOEUD_PARN = @ancien AND STAT IN {CodesBaseDonnees.StatutsActifs}",
             new { id = idParent.Valeur, ancien = ancienCode, nouveau = nouveauCode },
             ct));
 
     private async Task<IReadOnlyList<InstanceProcessus>> ListerAsync(string requete, object? parametres, CancellationToken ct)
         => (await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(requete, parametres, ct))).Select(l => l.VersDomaine()).ToList();
+
+    private sealed class LigneCompteVersion
+    {
+        public long NO_SEQ_DEFIN_PROCS { get; set; }
+
+        public int NOMBRE { get; set; }
+    }
 
     private sealed class LigneCompte
     {
@@ -201,7 +249,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
             CodeNoeudParent = ID_NOEUD_PARN,
             CleAffaire = AGGRE_ID,
             InstanceUnique = IND_INSTC_UNIQ != 0,
-            Statut = CodesBase.LireStatutInstance(STAT),
+            Statut = CodesBaseDonnees.LireStatutInstance(STAT),
             CodeFin = ID_NOEUD_FIN,
             CodeNoeudCourant = ID_NOEUD_COUR,
             IdTacheCourante = ID_TACH_EXTE,

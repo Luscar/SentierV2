@@ -5,9 +5,9 @@ namespace Sentier.Commandes;
 public abstract class CommandeSentier<TParametres> : ICommandeSentier where TParametres : new()
 {
     /// <inheritdoc />
-    public Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct)
+    public Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct)
         => ExecuterAsync(contexte, contexte.Parametres.Lier<TParametres>(), ct);
 
     /// <summary>Exécute la commande avec ses paramètres typés.</summary>
-    protected abstract Task ExecuterAsync(ContexteCommande contexte, TParametres parametres, CancellationToken ct);
+    protected abstract Task ExecuterAsync(ContexteCommandeSentier contexte, TParametres parametres, CancellationToken ct);
 }

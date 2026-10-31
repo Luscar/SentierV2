@@ -5,9 +5,9 @@ namespace Sentier.Commandes;
 public abstract class RequeteSentier<TParametres> : IRequeteSentier where TParametres : new()
 {
     /// <inheritdoc />
-    public Task<bool> EvaluerAsync(ContexteRequete contexte, CancellationToken ct)
+    public Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, CancellationToken ct)
         => EvaluerAsync(contexte, contexte.Parametres.Lier<TParametres>(), ct);
 
     /// <summary>Évalue la requête avec ses paramètres typés.</summary>
-    protected abstract Task<bool> EvaluerAsync(ContexteRequete contexte, TParametres parametres, CancellationToken ct);
+    protected abstract Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, TParametres parametres, CancellationToken ct);
 }

@@ -9,11 +9,11 @@ namespace Sentier.Execution;
 internal sealed class ExecuteurAppels(
     IServiceProvider services,
     RegistreSentier registre,
-    IEnumerable<IIntercepteurCommande> intercepteursCommande,
-    IEnumerable<IIntercepteurRequete> intercepteursRequete)
+    IEnumerable<IIntercepteurCommandeSentier> intercepteursCommande,
+    IEnumerable<IIntercepteurRequeteSentier> intercepteursRequete)
 {
-    private readonly IIntercepteurCommande[] _intercepteursCommande = intercepteursCommande.ToArray();
-    private readonly IIntercepteurRequete[] _intercepteursRequete = intercepteursRequete.ToArray();
+    private readonly IIntercepteurCommandeSentier[] _intercepteursCommande = intercepteursCommande.ToArray();
+    private readonly IIntercepteurRequeteSentier[] _intercepteursRequete = intercepteursRequete.ToArray();
 
     public async Task ExecuterCommandesAsync(
         IEnumerable<AppelCommande> appels,
@@ -42,7 +42,7 @@ internal sealed class ExecuteurAppels(
         var commande = (ICommandeSentier)services.GetRequiredService(type);
         var libelle = $"Commande '{appel.Nom}' du nœud '{codeNoeud}'";
         var parametres = new ParametresResolus(libelle, ResoudreParametres(appel.Parametres, instance, variables, libelle));
-        var contexte = new ContexteCommande(instance, codeNoeud, moment, parametres, variables, donneesTache, utilisateur);
+        var contexte = new ContexteCommandeSentier(instance, codeNoeud, moment, parametres, variables, donneesTache, utilisateur);
 
         Func<Task> executer = () => commande.ExecuterAsync(contexte, ct);
         for (var i = _intercepteursCommande.Length - 1; i >= 0; i--)
@@ -62,7 +62,7 @@ internal sealed class ExecuteurAppels(
         var libelle = $"Requête '{appel.Nom}' du nœud '{codeNoeud}'";
         var lecture = new VariablesLectureSeule(variables);
         var parametres = new ParametresResolus(libelle, ResoudreParametres(appel.Parametres, instance, lecture, libelle));
-        var contexte = new ContexteRequete(instance, codeNoeud, parametres, lecture);
+        var contexte = new ContexteRequeteSentier(instance, codeNoeud, parametres, lecture);
 
         Func<Task<bool>> evaluer = () => requete.EvaluerAsync(contexte, ct);
         for (var i = _intercepteursRequete.Length - 1; i >= 0; i--)

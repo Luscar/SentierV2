@@ -11,7 +11,7 @@ namespace Sentier.Persistance.Sqlite;
 public sealed class DialecteSqlite : DialecteSqlBase
 {
     /// <inheritdoc />
-    public override DialecteBase Type => DialecteBase.Sqlite;
+    public override TypeBaseDonnees Type => TypeBaseDonnees.Sqlite;
 
     /// <inheritdoc />
     public override string VerrouillageSansAttente => "";

@@ -3,9 +3,9 @@ using Sentier.Variables;
 namespace Sentier.Commandes;
 
 /// <summary>Contexte reçu par une requête : tout est en lecture seule.</summary>
-public sealed class ContexteRequete
+public sealed class ContexteRequeteSentier
 {
-    internal ContexteRequete(InstanceProcessus instance, string codeNoeud, ParametresResolus parametres, IVariablesLecture variables)
+    internal ContexteRequeteSentier(InstanceProcessus instance, string codeNoeud, ParametresResolus parametres, IVariablesLecture variables)
     {
         Instance = instance;
         CodeNoeud = codeNoeud;

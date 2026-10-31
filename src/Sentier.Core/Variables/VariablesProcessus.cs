@@ -161,7 +161,7 @@ public sealed class VariablesProcessus : IVariablesLecture
     /// <summary>Recharge des variables persistées, relues avec leur type déclaré.</summary>
     internal static VariablesProcessus Charger(
         IReadOnlyDictionary<string, DeclarationVariable> declarations,
-        ISerialiseurVariables serialiseur,
+        ISerialiseurVariablesSentier serialiseur,
         string? json)
     {
         var types = declarations.ToDictionary(d => d.Key, d => d.Value.Type);

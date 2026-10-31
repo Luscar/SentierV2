@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Sentier.Variables;
 
 /// <summary>Sérialiseur par défaut, basé sur <c>System.Text.Json</c>.</summary>
-public sealed class SerialiseurVariablesJson : ISerialiseurVariables
+public sealed class SerialiseurVariablesJson : ISerialiseurVariablesSentier
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = false };
 

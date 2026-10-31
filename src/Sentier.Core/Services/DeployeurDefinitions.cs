@@ -20,7 +20,7 @@ internal sealed class DeployeurDefinitions(
     IDepotInstances instances,
     FournisseurDefinitions fournisseur,
     ServiceMigration migration,
-    IHorloge horloge)
+    IHorlogeSentier horloge)
 {
     private readonly ILogger _logger = services.GetService<ILogger<DeployeurDefinitions>>() ?? (ILogger)NullLogger.Instance;
 
@@ -46,6 +46,8 @@ internal sealed class DeployeurDefinitions(
                 erreurs.Add($"[{definition.CleProcessus}] {erreur}");
             }
         }
+
+        erreurs.AddRange(await VerifierVersionsEnCoursAsync(parCle, ct));
 
         if (erreurs.Count > 0)
         {
@@ -100,9 +102,9 @@ internal sealed class DeployeurDefinitions(
             }
         }
 
-        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && !EstEnregistre<IGestionnaireTaches>())
+        if (definition.Noeuds.OfType<NoeudInteractif>().FirstOrDefault() is { } interactif && !EstEnregistre<IGestionnaireTachesSentier>())
         {
-            erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTaches, et aucun n'est enregistré.");
+            erreurs.Add($"Le nœud interactif '{interactif.Code}' exige un IGestionnaireTachesSentier, et aucun n'est enregistré.");
         }
 
         foreach (var sousProcessus in definition.Noeuds.OfType<NoeudSousProcessus>())
@@ -116,6 +118,46 @@ internal sealed class DeployeurDefinitions(
             }
 
             erreurs.AddRange(ValidateurSousProcessus.Valider(definition, sousProcessus, enfant));
+        }
+
+        return erreurs;
+    }
+
+    /// <summary>
+    /// Vérifie les versions déjà déployées qui ont encore des instances actives : leurs commandes et requêtes,
+    /// référencées par nom dans le contenu stocké, doivent toujours être enregistrées. Détecte au déploiement
+    /// une classe renommée ou supprimée, qui ferait échouer ces instances à l'exécution.
+    /// Les versions identiques à la définition déployée sont déjà vérifiées par <see cref="ValiderAsync"/>.
+    /// </summary>
+    private async Task<List<string>> VerifierVersionsEnCoursAsync(IReadOnlyDictionary<string, DefinitionProcessus> deployees, CancellationToken ct)
+    {
+        var erreurs = new List<string>();
+        var empreintes = deployees.ToDictionary(d => d.Key, d => SerialisationDefinition.CalculerEmpreinte(SerialisationDefinition.Serialiser(d.Value)), StringComparer.Ordinal);
+        foreach (var (idDefinition, nombre) in await instances.CompterActivesParVersionAsync(ct))
+        {
+            if (await depot.ObtenirAsync(idDefinition, ct) is not { } stockee
+                || (empreintes.TryGetValue(stockee.CleProcessus, out var empreinte) && empreinte == stockee.Empreinte))
+            {
+                continue;
+            }
+
+            var definition = fournisseur.Charger(stockee);
+            var prefixe = $"[{stockee.CleProcessus} v{stockee.Version}, {nombre} instance(s) active(s)]";
+            foreach (var nom in Commandes(definition).Select(c => c.Commande.Nom).Distinct().Where(n => registre.TypeCommande(n) is null))
+            {
+                erreurs.Add($"{prefixe} La commande '{nom}' n'est plus enregistrée : si la classe a été renommée, ajoutez-lui [CommandeSentier(\"{nom}\")] ; sinon, gardez-la jusqu'à la migration de ces instances.");
+            }
+
+            var requetes = definition.Transitions.Where(t => t.Requete is not null).Select(t => t.Requete!.Nom).Distinct();
+            foreach (var nom in requetes.Where(n => registre.TypeRequete(n) is null))
+            {
+                erreurs.Add($"{prefixe} La requête '{nom}' n'est plus enregistrée : si la classe a été renommée, ajoutez-lui [RequeteSentier(\"{nom}\")] ; sinon, gardez-la jusqu'à la migration de ces instances.");
+            }
+
+            if (definition.Noeuds.OfType<NoeudInteractif>().Any() && !EstEnregistre<IGestionnaireTachesSentier>())
+            {
+                erreurs.Add($"{prefixe} Cette version a des nœuds interactifs, et aucun IGestionnaireTachesSentier n'est enregistré.");
+            }
         }
 
         return erreurs;

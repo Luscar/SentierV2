@@ -42,7 +42,7 @@ public class ServiceProcessusAffairesSentier : IServiceProcessusAffaires
     private readonly IServiceTravailAsynchrone serviceTravailAsynchrone;
     private readonly IServiceSentier sentier;
     private readonly ISuiviSentier suivi;
-    private readonly IAccesseurTransaction accesseurTransaction;
+    private readonly IAccesseurTransactionSentier accesseurTransaction;
     private readonly IDbConnection connexion;
 
     public ServiceProcessusAffairesSentier(
@@ -50,7 +50,7 @@ public class ServiceProcessusAffairesSentier : IServiceProcessusAffaires
         IServiceTravailAsynchrone serviceTravailAsynchrone,
         IServiceSentier sentier,
         ISuiviSentier suivi,
-        IAccesseurTransaction accesseurTransaction,
+        IAccesseurTransactionSentier accesseurTransaction,
         IDbConnection connexion)
     {
         this.fabriqueProcessus = fabriqueProcessus;

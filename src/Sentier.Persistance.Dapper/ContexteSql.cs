@@ -12,7 +12,7 @@ namespace Sentier.Persistance.Dapper;
 /// </summary>
 public sealed partial class ContexteSql
 {
-    private static readonly ConcurrentDictionary<(DialecteBase, string), string> Traductions = new();
+    private static readonly ConcurrentDictionary<(TypeBaseDonnees, string), string> Traductions = new();
 
     private readonly ISessionSentier _session;
 

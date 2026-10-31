@@ -8,7 +8,7 @@ namespace Sentier.Persistance.Dapper;
 public abstract partial class DialecteSqlBase : IDialecteSql
 {
     /// <inheritdoc />
-    public abstract DialecteBase Type { get; }
+    public abstract TypeBaseDonnees Type { get; }
 
     /// <inheritdoc />
     public abstract string VerrouillageSansAttente { get; }

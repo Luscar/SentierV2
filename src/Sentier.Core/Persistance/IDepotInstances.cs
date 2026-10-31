@@ -21,6 +21,19 @@ public interface IDepotInstances
     /// <summary>Instances d'une clé d'affaire pour une ou plusieurs clés de processus.</summary>
     Task<IReadOnlyList<InstanceProcessus>> RechercherAsync(long cleAffaire, IReadOnlyCollection<string> clesProcessus, IReadOnlyCollection<StatutInstance>? statuts, CancellationToken ct);
 
+    /// <summary>
+    /// Lot d'instances d'un processus, des plus récentes aux plus anciennes, pour une recherche par variables.
+    /// <paramref name="motifsVariables"/> sont des motifs <c>LIKE</c> (échappement <c>\</c>) que le contenu
+    /// des variables doit tous respecter : un préfiltre sans faux négatif, le filtre exact est appliqué ensuite.
+    /// </summary>
+    Task<IReadOnlyList<InstanceProcessus>> ObtenirLotParProcessusAsync(
+        string cleProcessus,
+        IReadOnlyCollection<StatutInstance>? statuts,
+        IReadOnlyList<string> motifsVariables,
+        IdInstance? avant,
+        int taille,
+        CancellationToken ct);
+
     /// <summary>Enfants actifs d'une instance.</summary>
     Task<IReadOnlyList<InstanceProcessus>> ObtenirEnfantsActifsAsync(IdInstance idParent, CancellationToken ct);
 
@@ -29,6 +42,9 @@ public interface IDepotInstances
 
     /// <summary>Nombre d'instances actives d'un processus, par version et par nœud.</summary>
     Task<IReadOnlyList<CompteInstancesActives>> CompterActivesAsync(string cleProcessus, CancellationToken ct);
+
+    /// <summary>Versions de définition (tous processus) suivies par au moins une instance active, avec leur nombre d'instances actives.</summary>
+    Task<IReadOnlyDictionary<IdDefinition, int>> CompterActivesParVersionAsync(CancellationToken ct);
 
     /// <summary>Instances au repos (suspendues ou en erreur) d'une version, éventuellement filtrées par nœud.</summary>
     Task<IReadOnlyList<InstanceProcessus>> ObtenirAuReposAsync(IdDefinition idDefinition, string? codeNoeud, int taille, CancellationToken ct);

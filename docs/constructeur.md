@@ -138,7 +138,31 @@ Après une `Fin` ou un `Vers`, le nœud suivant n'est **pas** relié automatique
     .Sinon("refusee"))
 ```
 
-Les requêtes sont évaluées dans l'ordre ; la première vraie gagne, sinon `Sinon`. Au moins un `Si`/`SiPas` et exactement un `Sinon`.
+Une branche peut aussi tester **une variable directement**, sans écrire de requête :
+
+```csharp
+.Decision("aiguiller", d => d
+    .Si(Montant).SuperieurA(10_000m).Vers("approbation-direction")   // valeur fixe
+    .Si(Urgent).EstVrai().Vers("traitement-urgent")
+    .Si(Decision).EgalA("refusee").Alors(b => b.Fin("refusee"))
+    .Si(NbJours).SuperieurA(Solde).Nommee("solde-insuffisant")       // autre variable
+    .Si(Commentaire).EstRenseignee().Vers("relire")
+    .Sinon())
+```
+
+| Opérateur | Types acceptés |
+|---|---|
+| `EgalA`, `DifferentDe` | tous sauf JSON |
+| `SuperieurA`, `SuperieurOuEgalA`, `InferieurA`, `InferieurOuEgalA` | entier, décimal, date, texte (ordre ordinal) |
+| `Contient`, `CommencePar` | texte (sensible à la casse) |
+| `EstVrai`, `EstFaux` | booléen |
+| `EstRenseignee`, `EstVide` | tous |
+
+Un entier et un décimal se comparent entre eux. Une variable sans valeur ne satisfait que `EstVide` et `DifferentDe`. `EgalA(null)` équivaut à `EstVide()`.
+
+La sortie d'une condition porte son expression (`montant > 10000`), visible dans l'historique et le diagramme ; `.Nommee(…)` lui donne un nom stable, à préférer si la valeur peut changer d'une version à l'autre.
+
+Requêtes et conditions sont évaluées dans l'ordre de déclaration ; la première vraie gagne, sinon `Sinon`. Au moins une branche conditionnelle (`Si`/`SiPas`/condition sur variable) et exactement un `Sinon`.
 
 ### Attente : échéance et/ou signaux
 
@@ -239,7 +263,9 @@ Chaque appel déclare ses paramètres dans un bloc `p => …` :
 
 Avec `CommandeSentier<TParametres>` / `RequeteSentier<TParametres>`, les paramètres sont liés aux propriétés par nom.
 
-Les commandes et requêtes sont désignées par leur **classe** ; leur nom est celui de la classe, ou celui de `[CommandeSentier("nom")]` / `[RequeteSentier("nom")]`. Les variantes par nom (`Systemique("code", "NomCommande")`, `Si("NomRequete")`) existent pour les cas sans classe.
+Les commandes et requêtes sont désignées par leur **classe** (`Systemique<T>`, `Si<T>`, `CommandeEntree<T>`…) : aucune chaîne à écrire. La définition stockée garde leur nom, celui de la classe par défaut.
+
+> **Renommer une classe de commande ou de requête.** Les versions déjà déployées citent l'ancien nom. Ajoutez-le à la classe renommée, `[CommandeSentier("AncienNom")]` / `[RequeteSentier("AncienNom")]`, tant que des instances actives suivent ces versions. Le déploiement le vérifie : une commande ou requête d'une version encore suivie par des instances actives qui n'est plus enregistrée bloque le déploiement, avec le nom à reprendre.
 
 ## 7. Défauts et options
 
@@ -269,12 +295,13 @@ La construction vérifie toute la définition et lève `DefinitionInvalideExcept
 - codes de nœuds uniques, un début, au moins une fin ;
 - liens vers des codes existants, tous les nœuds atteignables, chaque nœud a une sortie ;
 - décision : au moins une branche conditionnelle et exactement un « sinon » ;
+- condition sur variable : variable (et variable de comparaison) déclarée, opérateur applicable au type, valeur du même type (entier et décimal se mélangent) ;
 - attente : au moins un déclencheur, au plus une échéance ;
 - noms de sortie uniques par nœud ;
 - branche avec deux destinations, `Alors`/`Vers`/`Nommee` sans branche avant ;
 - variables référencées déclarées, variable déclarée deux fois différemment.
 
-Le déploiement vérifie en plus que les commandes et requêtes sont enregistrées et que les sous-processus et leurs mappages sont cohérents.
+Le déploiement vérifie en plus que les commandes et requêtes sont enregistrées, y compris celles des versions antérieures encore suivies par des instances actives, et que les sous-processus et leurs mappages sont cohérents.
 
 Un test qui construit toutes les définitions détecte ces erreurs avant le déploiement :
 
@@ -317,6 +344,8 @@ public sealed class MonProcessus : DefinitionSentier
         .Decision("code", d => d
             .Si<Requete>([p => …])[.Nommee("…")][.Alors(b => …) | .Vers("code")]
             .SiPas<Requete>([p => …])…
+            .Si(Variable).EgalA(v | V2) | DifferentDe | SuperieurA | SuperieurOuEgalA | InferieurA | InferieurOuEgalA
+                         | Contient("…") | CommencePar("…") | EstVrai() | EstFaux() | EstRenseignee() | EstVide()…
             .Sinon([b => … | "code"]))
         .Attente("code", a => a
             [.CommandeEntree<…>()]

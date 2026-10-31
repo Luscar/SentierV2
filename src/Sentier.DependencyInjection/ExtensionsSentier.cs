@@ -28,7 +28,7 @@ public static class ExtensionsSentier
     /// services.AddSentier(o =>
     /// {
     ///     o.PrefixeTables = "SENTIER";
-    ///     o.UtiliserOracle().BalayerAssemblyDe&lt;Program&gt;();   // trouve aussi l'IGestionnaireTaches du client
+    ///     o.UtiliserOracle().BalayerAssemblyDe&lt;Program&gt;();   // trouve aussi l'IGestionnaireTachesSentier du client
     /// });
     /// </code>
     /// </example>
@@ -44,13 +44,13 @@ public static class ExtensionsSentier
         services.AddSingleton(options);
         services.AddSingleton(registre);
         services.AddSingleton(new NomsObjets(options.PrefixeTables));
-        services.AddSingleton<IDialecteSql>(options.Dialecte == DialecteBase.Oracle ? new DialecteOracle() : new DialecteSqlite());
+        services.AddSingleton<IDialecteSql>(options.Dialecte == TypeBaseDonnees.Oracle ? new DialecteOracle() : new DialecteSqlite());
         services.TryAddSingleton<CacheDefinitions>();
-        services.TryAddSingleton<IHorloge, HorlogeSysteme>();
-        services.TryAddSingleton<ISerialiseurVariables, SerialiseurVariablesJson>();
+        services.TryAddSingleton<IHorlogeSentier, HorlogeSystemeSentier>();
+        services.TryAddSingleton<ISerialiseurVariablesSentier, SerialiseurVariablesJson>();
 
         // Connexion et transaction du client.
-        services.TryAddScoped<IAccesseurTransaction, AccesseurTransaction>();
+        services.TryAddScoped<IAccesseurTransactionSentier, AccesseurTransactionSentier>();
         if (options.TypeSession is not null)
         {
             services.AddScoped(typeof(ISessionSentier), options.TypeSession);
@@ -64,18 +64,18 @@ public static class ExtensionsSentier
         // par le client, sinon l'unique implémentation trouvée par balayage.
         if (options.TypeGestionnaireTaches is not null)
         {
-            services.Replace(ServiceDescriptor.Scoped(typeof(IGestionnaireTaches), options.TypeGestionnaireTaches));
+            services.Replace(ServiceDescriptor.Scoped(typeof(IGestionnaireTachesSentier), options.TypeGestionnaireTaches));
         }
-        else if (!services.Any(d => d.ServiceType == typeof(IGestionnaireTaches)))
+        else if (!services.Any(d => d.ServiceType == typeof(IGestionnaireTachesSentier)))
         {
             switch (registre.GestionnairesTaches.Count)
             {
                 case 1:
-                    services.AddScoped(typeof(IGestionnaireTaches), registre.GestionnairesTaches[0]);
+                    services.AddScoped(typeof(IGestionnaireTachesSentier), registre.GestionnairesTaches[0]);
                     break;
                 case > 1:
                     throw new SentierException(
-                        $"Plusieurs implémentations de IGestionnaireTaches ont été trouvées ({string.Join(", ", registre.GestionnairesTaches.Select(t => t.FullName))}) : "
+                        $"Plusieurs implémentations de IGestionnaireTachesSentier ont été trouvées ({string.Join(", ", registre.GestionnairesTaches.Select(t => t.FullName))}) : "
                         + "choisir celle à utiliser avec UtiliserGestionnaireTaches<T>().");
             }
         }

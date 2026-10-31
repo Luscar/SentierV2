@@ -1,7 +1,7 @@
 namespace Sentier;
 
-/// <summary>Demande de création d'une tâche, transmise au <see cref="IGestionnaireTaches"/> du client.</summary>
-public sealed class DemandeTacheUtilisateur
+/// <summary>Demande de création d'une tâche, transmise au <see cref="IGestionnaireTachesSentier"/> du client.</summary>
+public sealed class DemandeTacheSentier
 {
     /// <summary>Instance à l'origine de la tâche.</summary>
     public required IdInstance IdInstance { get; init; }
@@ -15,14 +15,14 @@ public sealed class DemandeTacheUtilisateur
     /// <summary>Code du nœud interactif.</summary>
     public required string CodeNoeud { get; init; }
 
-    /// <summary>Nom de la tâche.</summary>
-    public required string Nom { get; init; }
+    /// <summary>Nom de la tâche (<c>NoeudInteractif.NomTache</c>).</summary>
+    public required string NomTache { get; init; }
 
     /// <summary>Rôle assigné, optionnel.</summary>
     public string? Role { get; init; }
 
-    /// <summary>Utilisateur assigné, optionnel.</summary>
-    public string? Utilisateur { get; init; }
+    /// <summary>Utilisateur assigné automatiquement (<c>.Assigne(...)</c>), optionnel : la tâche est créée déjà assignée.</summary>
+    public string? Assigne { get; init; }
 
     /// <summary>Date (UTC) d'échéance indicative.</summary>
     public DateTime? DateEcheance { get; init; }

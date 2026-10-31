@@ -9,16 +9,16 @@ Le pas-à-pas complet est dans le [guide de démarrage](demarrage.md) ; les règ
 | Contrat | Quand | Trouvé par | Durée de vie |
 |---|---|---|---|
 | `IDbConnection` (enregistrement) | **Toujours** | Enregistrée par le client | Portée |
-| Transaction : `IDbTransaction`, `IAccesseurTransaction`, `ISessionSentier`, ou `TransactionScope` (Oracle) | **Toujours** (écritures) | Enregistrée ou alimentée par le client | Portée |
+| Transaction : `IDbTransaction`, `IAccesseurTransactionSentier`, `ISessionSentier`, ou `TransactionScope` (Oracle) | **Toujours** (écritures) | Enregistrée ou alimentée par le client | Portée |
 | `DefinitionSentier` + `[ProcessusSentier]` | **Toujours** : un par processus | Balayage | — |
 | `ICommandeSentier` / `CommandeSentier<T>` | Nœuds `Systemique`, commandes d'entrée et de sortie, calcul de migration | Balayage | Portée |
 | `IRequeteSentier` / `RequeteSentier<T>` | Branches de `Decision` calculées par code | Balayage | Portée |
-| `IGestionnaireTaches` | Dès qu'un processus a un nœud `Interactif` (sinon le déploiement échoue) | Balayage, ou `UtiliserGestionnaireTaches<T>()` | Portée |
+| `IGestionnaireTachesSentier` | Dès qu'un processus a un nœud `Interactif` (sinon le déploiement échoue) | Balayage, ou `UtiliserGestionnaireTaches<T>()` | Portée |
 | `IPlanMigration` | Migration d'instances non compatible avec la nouvelle version | Balayage | — |
-| `IContexteUtilisateur` | Optionnel : utilisateur courant pour l'audit | Enregistré par le client | Portée |
-| `IHorloge` | Optionnel : heure courante (tests des échéances) | Enregistrée par le client | Singleton |
-| `IIntercepteurCommande` / `IIntercepteurRequete` | Optionnel : journalisation, audit, mesure | Enregistrés par le client | Portée |
-| `ISerialiseurVariables` | Optionnel : format de stockage des variables (JSON par défaut) | Enregistré par le client | Singleton |
+| `IContexteUtilisateurSentier` | Optionnel : utilisateur courant pour l'audit | Enregistré par le client | Portée |
+| `IHorlogeSentier` | Optionnel : heure courante (tests des échéances) | Enregistrée par le client | Singleton |
+| `IIntercepteurCommandeSentier` / `IIntercepteurRequeteSentier` | Optionnel : journalisation, audit, mesure | Enregistrés par le client | Portée |
+| `ISerialiseurVariablesSentier` | Optionnel : format de stockage des variables (JSON par défaut) | Enregistré par le client | Singleton |
 
 « Balayage » : les types concrets des assemblys indiqués par `BalayerAssemblyDe<T>()` sont trouvés et enregistrés
 par Sentier ; le client n'a rien à enregistrer pour eux.
@@ -37,10 +37,10 @@ builder.RegisterModule(new ModuleSentier(o => o
     // .UtiliserSession<MaSession>()             // seulement pour une session sur mesure (§ 3.1)
 
 // Optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
-builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateur>().InstancePerLifetimeScope();
-builder.RegisterType<JournalCommandes>().As<IIntercepteurCommande>().InstancePerLifetimeScope();
-builder.RegisterType<JournalRequetes>().As<IIntercepteurRequete>().InstancePerLifetimeScope();
-builder.RegisterType<HorlogeMetier>().As<IHorloge>().SingleInstance();
+builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
+builder.RegisterType<JournalCommandes>().As<IIntercepteurCommandeSentier>().InstancePerLifetimeScope();
+builder.RegisterType<JournalRequetes>().As<IIntercepteurRequeteSentier>().InstancePerLifetimeScope();
+builder.RegisterType<HorlogeMetier>().As<IHorlogeSentier>().SingleInstance();
 
 var container = builder.Build();
 ```
@@ -68,10 +68,10 @@ transaction.Commit();                                                        // 
 services.AddScoped<IDbConnection>(_ => OuvrirConnexion());
 services.AddSentier(o => o.UtiliserOracle("SENTIER").BalayerAssemblyDe<Program>());
 
-// Optionnels : IHorloge et ISerialiseurVariables AVANT AddSentier (Sentier ne les ajoute que s'ils manquent),
+// Optionnels : IHorlogeSentier et ISerialiseurVariablesSentier AVANT AddSentier (Sentier ne les ajoute que s'ils manquent),
 // les autres où l'on veut.
-services.AddScoped<IContexteUtilisateur, ContexteUtilisateurWeb>();
-services.AddScoped<IIntercepteurCommande, JournalCommandes>();
+services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();
+services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();
 ```
 
 Par portée, alimenter la transaction :
@@ -80,7 +80,7 @@ Par portée, alimenter la transaction :
 using var scope = provider.CreateScope();
 var connexion = scope.ServiceProvider.GetRequiredService<IDbConnection>();
 using var transaction = connexion.BeginTransaction();
-scope.ServiceProvider.GetRequiredService<IAccesseurTransaction>().Transaction = transaction;
+scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;
 
 await scope.ServiceProvider.GetRequiredService<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
 transaction.Commit();
@@ -89,7 +89,7 @@ transaction.Commit();
 ### 2.3 Ce que Sentier n'enregistre jamais
 
 - l'`IDbConnection` et l'`IDbTransaction` : elles appartiennent au client ;
-- `IContexteUtilisateur`, les intercepteurs : à enregistrer par le client s'il en veut.
+- `IContexteUtilisateurSentier`, les intercepteurs : à enregistrer par le client s'il en veut.
 
 ## 3. Contrats obligatoires
 
@@ -98,7 +98,7 @@ transaction.Commit();
 Sentier lit la connexion et la transaction par `ISessionSentier` (portée). L'implémentation par défaut prend :
 
 - la connexion : l'`IDbConnection` enregistrée dans la portée (déjà ouverte) ;
-- la transaction : celle d'`IAccesseurTransaction` si le client l'a alimentée, sinon l'`IDbTransaction` de la portée.
+- la transaction : celle d'`IAccesseurTransactionSentier` si le client l'a alimentée, sinon l'`IDbTransaction` de la portée.
 
 Sentier **n'ouvre, ne valide et n'annule jamais** de transaction. Toute écriture sans transaction active lève
 `TransactionRequiseException`. Les commandes du client reçoivent la même connexion par injection et écrivent
@@ -170,11 +170,11 @@ Toute écriture (base métier, variables du processus). Injection par constructe
 ```csharp
 public interface ICommandeSentier
 {
-    Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct);
+    Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct);
 }
 ```
 
-`ContexteCommande` : `Instance`, `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Moment` (`Execution`, `Entree`,
+`ContexteCommandeSentier` : `Instance`, `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Moment` (`Execution`, `Entree`,
 `Sortie`, `Migration`), `Parametres`, `Variables` (lecture et écriture), `DonneesTache` (commande de sortie), `Utilisateur`.
 
 Avec paramètres typés, dériver de `CommandeSentier<TParametres>` (liaison par nom de propriété) :
@@ -182,18 +182,18 @@ Avec paramètres typés, dériver de `CommandeSentier<TParametres>` (liaison par
 ```csharp
 public sealed class CalculerSolde(IDepotEmployes employes) : ICommandeSentier
 {
-    public async Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct)
+    public async Task ExecuterAsync(ContexteCommandeSentier contexte, CancellationToken ct)
         => contexte.Variables.Ecrire(DemandeConge.Solde, await employes.SoldeAsync(contexte.CleAffaire, ct));
 }
 
 public sealed class NotifierEmploye(INotifications notifications) : CommandeSentier<ParametresNotification>
 {
-    protected override Task ExecuterAsync(ContexteCommande contexte, ParametresNotification p, CancellationToken ct)
+    protected override Task ExecuterAsync(ContexteCommandeSentier contexte, ParametresNotification p, CancellationToken ct)
         => notifications.EnvoyerAsync(contexte.CleAffaire, p.Message, ct);
 }
 ```
 
-Nom de la commande : celui de la classe, ou `[CommandeSentier("nom")]`. Deux commandes du même nom font échouer le démarrage.
+Nom de la commande : celui de la classe. Après un renommage, `[CommandeSentier("AncienNom")]` garde l'ancien nom pour les versions déjà déployées ; le déploiement échoue si une version suivie par des instances actives cite une commande introuvable. Deux commandes du même nom font échouer le démarrage.
 
 ### 4.2 Requêtes — `IRequeteSentier`
 
@@ -202,11 +202,11 @@ Nom de la commande : celui de la classe, ou `[CommandeSentier("nom")]`. Deux com
 ```csharp
 public interface IRequeteSentier
 {
-    Task<bool> EvaluerAsync(ContexteRequete contexte, CancellationToken ct);
+    Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, CancellationToken ct);
 }
 ```
 
-`ContexteRequete` : `Instance`, `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Parametres`, `Variables` (lecture seule).
+`ContexteRequeteSentier` : `Instance`, `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Parametres`, `Variables` (lecture seule).
 Avec paramètres typés : `RequeteSentier<TParametres>`.
 
 ```csharp
@@ -214,52 +214,52 @@ public sealed class ParametresSolde { public long NbJours { get; set; } public l
 
 public sealed class SoldeSuffisant : RequeteSentier<ParametresSolde>
 {
-    protected override Task<bool> EvaluerAsync(ContexteRequete contexte, ParametresSolde p, CancellationToken ct)
+    protected override Task<bool> EvaluerAsync(ContexteRequeteSentier contexte, ParametresSolde p, CancellationToken ct)
         => Task.FromResult(p.NbJours <= p.Solde);
 }
 ```
 
-Nom : celui de la classe, ou `[RequeteSentier("nom")]`. Une décision sur une simple variable ne demande aucune requête.
+Nom : celui de la classe ; `[RequeteSentier("AncienNom")]` après un renommage, comme pour les commandes. Une décision sur une simple variable ne demande aucune requête.
 
-### 4.3 Tâches utilisateurs — `IGestionnaireTaches`
+### 4.3 Tâches utilisateurs — `IGestionnaireTachesSentier`
 
 Obligatoire dès qu'un processus a un nœud `Interactif`. Sentier **ne stocke aucune tâche** : il délègue chaque étape
 au gestionnaire du client et garde seulement l'identifiant de la tâche attendue par l'instance.
 
 | Méthode | Appelée par Sentier | Exigence |
 |---|---|---|
-| `Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, ct)` | Entrée dans un nœud interactif, après les commandes d'entrée | Retourner l'identifiant de la tâche chez le client |
-| `Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, ct)` | Début de `CompleterTacheAsync` et `AssignerTacheAsync` | `null` si inconnue |
-| `Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance, ct)` | Annulation, reprise, migration, suivi | Peut être appelée sans transaction |
+| `Task<long> CreerTacheAsync(DemandeTacheSentier demande, ct)` | Entrée dans un nœud interactif, après les commandes d'entrée | Retourner l'identifiant de la tâche chez le client |
+| `Task<TacheSentier?> ObtenirTacheAsync(long idTache, ct)` | Début de `CompleterTacheAsync` et `AssignerTacheAsync` | `null` si inconnue |
+| `Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance, ct)` | Annulation, reprise, migration, suivi | Peut être appelée sans transaction |
 | `Task CompleterTacheAsync(long idTache, donnees, utilisateur, ct)` | Complétion, après les commandes de sortie | **Idempotente** |
 | `Task AssignerTacheAsync(long idTache, string utilisateur, ct)` | `IServiceSentier.AssignerTacheAsync`, seulement pour la tâche attendue | — |
 | `Task AnnulerTacheAsync(long idTache, string motif, ct)` | Annulation de l'instance, tâche orpheline, migration | **Idempotente** |
 | `Task RenommerNoeudAsync(IdInstance, ancienCode, nouveauCode, ct)` | Migration qui renomme le nœud interactif | — |
 
-`DemandeTacheUtilisateur` : `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Nom`, `Role`, `Utilisateur`,
-`DateEcheance`, `Donnees`. `TacheUtilisateur` (retournée au moteur) : `Id`, `IdInstance`, `CodeNoeud`,
+`DemandeTacheSentier` : `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `NomTache`, `Role`, `Assigne` (assignation automatique),
+`DateEcheance`, `Donnees`. `TacheSentier` (retournée au moteur) : `Id`, `IdInstance`, `CodeNoeud`,
 `Statut` (`Ouverte`, `Completee`, `Annulee`).
 
 ```csharp
-public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
+public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTachesSentier
 {
-    public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
-        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.Nom, demande.Role, demande.Utilisateur, ct);
+    public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
+        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.NomTache, demande.Role, demande.Assigne, ct);
 
-    public Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, CancellationToken ct)
+    public Task<TacheSentier?> ObtenirTacheAsync(long idTache, CancellationToken ct)
         => depot.ObtenirAsync(idTache, ct);
 
-    public Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
+    public Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
         => depot.OuvertesAsync(idInstance.Valeur, ct);
 
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Completee, ct);      // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Completee, ct);      // idempotent
 
     public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct)
         => depot.AssignerAsync(idTache, utilisateur, ct);
 
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Annulee, ct);        // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Annulee, ct);        // idempotent
 
     public Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct)
         => depot.RenommerNoeudAsync(idInstance.Valeur, ancienCode, nouveauCode, ct);
@@ -268,7 +268,7 @@ public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
 
 Si les tâches sont en base, utiliser la **même connexion et transaction** que Sentier (injecter `IDbConnection`
 ou `ISessionSentier`). Le balayage ignore les décorateurs (classes dont un constructeur reçoit un
-`IGestionnaireTaches`). Sans indication, l'unique implémentation trouvée est enregistrée automatiquement ;
+`IGestionnaireTachesSentier`). Sans indication, l'unique implémentation trouvée est enregistrée automatiquement ;
 `UtiliserGestionnaireTaches<T>()` est nécessaire s'il en reste plusieurs (sinon erreur au démarrage, même avec Autofac)
 ou si la classe est dans un assembly non balayé.
 
@@ -298,11 +298,11 @@ Utilisation : `SimulerMigrationAsync` (rapport, rien n'est écrit), puis `Migrer
 
 | Contrat | Signature | Usage |
 |---|---|---|
-| `IContexteUtilisateur` | `string? Utilisateur { get; }` | Auteur par défaut des actions (audit) quand l'appel n'en précise pas |
-| `IHorloge` | `DateTime MaintenantUtc { get; }` | Heure courante (UTC) ; une horloge simulée permet de tester les échéances |
-| `IIntercepteurCommande` | `Task ExecuterAsync(string nomCommande, ContexteCommande contexte, Func<Task> suivant, ct)` | Code autour de chaque commande ; appeler `suivant()` |
-| `IIntercepteurRequete` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequete contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
-| `ISerialiseurVariables` | `string Serialiser(valeurs)` ; `Dictionary<string, object?> Deserialiser(json, types)` | Remplacer le stockage JSON des variables |
+| `IContexteUtilisateurSentier` | `string? Utilisateur { get; }` | Auteur par défaut des actions (audit) quand l'appel n'en précise pas |
+| `IHorlogeSentier` | `DateTime MaintenantUtc { get; }` | Heure courante (UTC) ; une horloge simulée permet de tester les échéances |
+| `IIntercepteurCommandeSentier` | `Task ExecuterAsync(string nomCommande, ContexteCommandeSentier contexte, Func<Task> suivant, ct)` | Code autour de chaque commande ; appeler `suivant()` |
+| `IIntercepteurRequeteSentier` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequeteSentier contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
+| `ISerialiseurVariablesSentier` | `string Serialiser(valeurs)` ; `Dictionary<string, object?> Deserialiser(json, types)` | Remplacer le stockage JSON des variables |
 | `ISessionSentier` | `IDbConnection Connexion` ; `IDbTransaction? Transaction` | Session sur mesure (§ 3.1), par `UtiliserSession<T>()` |
 
 Plusieurs intercepteurs peuvent être enregistrés : ils s'enchaînent dans l'ordre d'enregistrement.
@@ -318,8 +318,10 @@ Tous les appels se font dans une portée qui porte la connexion et la transactio
 | Réassigner une tâche | `IServiceSentier.AssignerTacheAsync(idTache, utilisateur)` |
 | Envoyer un signal | `IServiceSentier.EnvoyerSignalAsync(nomSignal, cleProcessus, cleAffaire)` ou `EnvoyerSignalCorrelationAsync` |
 | Annuler une instance | `IServiceSentier.AnnulerAsync(idInstance, motif)` |
+| Corriger des variables | `IServiceSentier.ModifierVariablesAsync(idInstance, valeurs, utilisateur)` (instance suspendue ou en erreur) |
+| Rechercher par variables | `ISuiviSentier.RechercherParVariablesAsync(recherche)` ou `RechercherParVariableAsync(cleProcessus, variable, valeur)` |
 | Batch des échéances | `ObtenirEcheancesDuesAsync`, puis `TraiterEcheanceAsync` par échéance, chacune dans sa transaction ; `MarquerEnErreurAsync` en cas d'échec |
-| Consulter | `ISuiviSentier` : instance, historique, attentes, tâches ouvertes, instances en erreur, diagramme |
+| Consulter | `ISuiviSentier` : instance, recherche par clé d'affaire ou par variables, historique, attentes, tâches ouvertes, instances en erreur, diagramme |
 
 Les cas « rien à faire » (tâche déjà complétée, signal sans destinataire…) retournent `SansEffet` sans exception.
 Les vraies erreurs sont propagées : la transaction du client n'est pas validée.
@@ -330,7 +332,7 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 - [ ] Une portée par unité de travail, avec `IDbConnection` ouverte et la transaction, ou un `TransactionScope` sous Oracle (§ 2, § 3.1).
 - [ ] Une `DefinitionSentier` + `[ProcessusSentier]` par processus ; `DeployerDefinitionsAsync()` au démarrage.
 - [ ] Une `ICommandeSentier` par commande référencée ; une `IRequeteSentier` par décision calculée.
-- [ ] `IGestionnaireTaches` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.
+- [ ] `IGestionnaireTachesSentier` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.
 - [ ] Un batch des échéances si un processus utilise `.Echeance(...)` ou une attente temporelle.
 - [ ] `IPlanMigration` pour chaque migration non compatible.
-- [ ] (Optionnel) `IContexteUtilisateur`, intercepteurs, `IHorloge`, `ISerialiseurVariables`.
+- [ ] (Optionnel) `IContexteUtilisateurSentier`, intercepteurs, `IHorlogeSentier`, `ISerialiseurVariablesSentier`.

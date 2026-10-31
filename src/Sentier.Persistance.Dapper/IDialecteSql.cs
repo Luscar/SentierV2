@@ -6,7 +6,7 @@ namespace Sentier.Persistance.Dapper;
 public interface IDialecteSql
 {
     /// <summary>Dialecte représenté.</summary>
-    DialecteBase Type { get; }
+    TypeBaseDonnees Type { get; }
 
     /// <summary>Marque d'un paramètre nommé (<c>:p</c> sous Oracle, <c>@p</c> sous SQLite).</summary>
     string Parametre(string nom);

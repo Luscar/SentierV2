@@ -3,7 +3,7 @@ using Sentier.Definitions;
 namespace Sentier.Execution.Executeurs;
 
 /// <summary>Interactif : commandes d'entrée, création de la tâche ; à la complétion, fusion des données et commandes de sortie.</summary>
-internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horloge) : IExecuteurNoeud
+internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorlogeSentier horloge) : IExecuteurNoeud
 {
     public TypeNoeud Type => TypeNoeud.Interactif;
 
@@ -22,15 +22,15 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horlo
             ? maintenant + duree
             : noeud.VariableEcheance is not null ? contexte.Variables.Lire(noeud.VariableEcheance) as DateTime? : null;
 
-        var demande = new DemandeTacheUtilisateur
+        var demande = new DemandeTacheSentier
         {
             IdInstance = instance.Id,
             CleProcessus = instance.CleProcessus,
             CleAffaire = instance.CleAffaire,
             CodeNoeud = noeud.Code,
-            Nom = noeud.NomTache,
+            NomTache = noeud.NomTache,
             Role = noeud.Role,
-            Utilisateur = assigne,
+            Assigne = assigne,
             DateEcheance = echeance,
             Donnees = ExecuteurAppels.ResoudreParametres(noeud.Donnees, instance, contexte.Variables, libelle),
         };

@@ -36,8 +36,8 @@ public sealed class RegistreSentier
     public IReadOnlyList<Type> PlansMigration { get; }
 
     /// <summary>
-    /// Implémentations de <see cref="IGestionnaireTaches"/> trouvées, sans les décorateurs
-    /// (classes dont un constructeur reçoit un <see cref="IGestionnaireTaches"/>).
+    /// Implémentations de <see cref="IGestionnaireTachesSentier"/> trouvées, sans les décorateurs
+    /// (classes dont un constructeur reçoit un <see cref="IGestionnaireTachesSentier"/>).
     /// </summary>
     public IReadOnlyList<Type> GestionnairesTaches { get; }
 
@@ -73,7 +73,7 @@ public sealed class RegistreSentier
                 plans.Add(type);
             }
 
-            if (typeof(IGestionnaireTaches).IsAssignableFrom(type) && !EstDecorateur(type))
+            if (typeof(IGestionnaireTachesSentier).IsAssignableFrom(type) && !EstDecorateur(type))
             {
                 gestionnairesTaches.Add(type);
             }
@@ -99,7 +99,7 @@ public sealed class RegistreSentier
     }
 
     private static bool EstDecorateur(Type type)
-        => type.GetConstructors().Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(IGestionnaireTaches)));
+        => type.GetConstructors().Any(c => c.GetParameters().Any(p => p.ParameterType == typeof(IGestionnaireTachesSentier)));
 
     private static IEnumerable<Type> TypesConcrets(Assembly assembly)
     {

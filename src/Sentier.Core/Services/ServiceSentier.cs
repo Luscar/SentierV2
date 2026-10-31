@@ -15,7 +15,7 @@ internal sealed class ServiceSentier(
     IDepotAttentes attentes,
     DeployeurDefinitions deployeur,
     ServiceMigration migration,
-    IHorloge horloge) : IServiceSentier
+    IHorlogeSentier horloge) : IServiceSentier
 {
     public async Task<ResultatExecution> DemarrerAsync(string cleProcessus, long cleAffaire, IReadOnlyDictionary<string, object?>? variables = null, string? utilisateur = null, CancellationToken ct = default)
     {
@@ -53,13 +53,13 @@ internal sealed class ServiceSentier(
         if (instance is null || !instance.EstAuRepos || instance.IdTacheCourante != idTache)
         {
             return ResultatExecution.Aucun(
-                tache.Statut == StatutTache.Ouverte
+                tache.Statut == StatutTacheSentier.Ouverte
                     ? $"L'instance n'attend pas la tâche {idTache}."
-                    : $"La tâche {idTache} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.",
+                    : $"La tâche {idTache} est déjà {(tache.Statut == StatutTacheSentier.Completee ? "complétée" : "annulée")}.",
                 instance);
         }
 
-        if (tache.Statut == StatutTache.Annulee)
+        if (tache.Statut == StatutTacheSentier.Annulee)
         {
             return ResultatExecution.Aucun($"La tâche {idTache} est annulée chez le client ; l'instance l'attend toujours.", instance);
         }
@@ -86,12 +86,52 @@ internal sealed class ServiceSentier(
             return ResultatExecution.Aucun($"L'instance n'attend pas la tâche {idTache}.", instance);
         }
 
-        if (tache.Statut != StatutTache.Ouverte)
+        if (tache.Statut != StatutTacheSentier.Ouverte)
         {
             return ResultatExecution.Aucun($"La tâche {idTache} n'est plus ouverte.", instance);
         }
 
         await moteur.Taches.AssignerTacheAsync(idTache, utilisateur, ct);
+        return ResultatExecution.Depuis(instance);
+    }
+
+    public async Task<ResultatExecution> ModifierVariablesAsync(IdInstance idInstance, IReadOnlyDictionary<string, object?> valeurs, string? utilisateur = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(valeurs);
+        session.ExigerTransaction();
+        var instance = await instances.ObtenirAsync(idInstance, ct);
+        if (instance is null)
+        {
+            return ResultatExecution.Aucun($"L'instance {idInstance} est introuvable.");
+        }
+
+        if (!instance.EstAuRepos)
+        {
+            return ResultatExecution.Aucun(
+                instance.EstActive
+                    ? $"L'instance {idInstance} est en cours d'exécution : ses variables ne peuvent pas être modifiées."
+                    : $"L'instance {idInstance} est {(instance.Statut == StatutInstance.Terminee ? "terminée" : "annulée")}.",
+                instance);
+        }
+
+        if (valeurs.Count == 0)
+        {
+            return ResultatExecution.Aucun("Aucune variable à modifier.", instance);
+        }
+
+        var definition = await definitions.ObtenirAsync(instance.IdDefinition, ct);
+        var variables = moteur.ChargerVariables(instance, definition);
+        foreach (var (nom, valeur) in valeurs)
+        {
+            if (valeur is null && definition.Declarations.TryGetValue(nom, out var declaration) && declaration.Obligatoire)
+            {
+                throw new VariableInvalideException($"La variable obligatoire '{nom}' ne peut pas être effacée.");
+            }
+
+            variables.Ecrire(nom, valeur);
+        }
+
+        await moteur.EnregistrerVariablesAsync(instance, variables, valeurs.Keys, utilisateur ?? moteur.UtilisateurCourant, ct);
         return ResultatExecution.Depuis(instance);
     }
 

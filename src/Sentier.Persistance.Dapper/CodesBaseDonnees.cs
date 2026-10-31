@@ -1,7 +1,7 @@
 namespace Sentier.Persistance.Dapper;
 
 /// <summary>Codes stockés en base pour les énumérations de Sentier.</summary>
-public static class CodesBase
+public static class CodesBaseDonnees
 {
     /// <summary>Liste SQL des statuts actifs.</summary>
     public const string StatutsActifs = "('EN_COURS', 'SUSPENDUE', 'EN_ERREUR')";

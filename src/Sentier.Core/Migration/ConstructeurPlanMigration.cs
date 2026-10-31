@@ -58,8 +58,7 @@ public sealed class ConstructeurPlanMigration
     public ConstructeurPlanMigration CalculerVariables<TCommande>(Action<ConfigurationParametres>? parametres = null) where TCommande : ICommandeSentier
         => CalculerVariables(NomsSentier.NomCommande(typeof(TCommande)), parametres);
 
-    /// <summary>Commande désignée par son nom, qui calcule des variables pendant la migration.</summary>
-    public ConstructeurPlanMigration CalculerVariables(string nomCommande, Action<ConfigurationParametres>? parametres = null)
+    private ConstructeurPlanMigration CalculerVariables(string nomCommande, Action<ConfigurationParametres>? parametres = null)
     {
         _commandes.Add(ConfigurationParametres.Appel(nomCommande, parametres));
         return this;
