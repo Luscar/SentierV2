@@ -16,7 +16,7 @@ public sealed partial class OptionsSentier
     public int MaxEtapesParExecution { get; set; } = 1000;
 
     /// <summary>Dialecte SQL de la base.</summary>
-    public DialecteBase Dialecte { get; set; } = DialecteBase.Oracle;
+    public TypeBaseDonnees Dialecte { get; set; } = TypeBaseDonnees.Oracle;
 
     /// <summary>Assemblys balayés pour trouver commandes, requêtes, définitions, plans de migration et gestionnaire de tâches.</summary>
     public List<Assembly> Assemblys { get; } = [];
@@ -33,14 +33,14 @@ public sealed partial class OptionsSentier
     /// <summary>Utilise le dialecte Oracle.</summary>
     public OptionsSentier UtiliserOracle()
     {
-        Dialecte = DialecteBase.Oracle;
+        Dialecte = TypeBaseDonnees.Oracle;
         return this;
     }
 
     /// <summary>Utilise le dialecte SQLite.</summary>
     public OptionsSentier UtiliserSqlite()
     {
-        Dialecte = DialecteBase.Sqlite;
+        Dialecte = TypeBaseDonnees.Sqlite;
         return this;
     }
 

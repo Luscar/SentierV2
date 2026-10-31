@@ -53,13 +53,13 @@ internal sealed class ServiceSentier(
         if (instance is null || !instance.EstAuRepos || instance.IdTacheCourante != idTache)
         {
             return ResultatExecution.Aucun(
-                tache.Statut == StatutTache.Ouverte
+                tache.Statut == StatutTacheSentier.Ouverte
                     ? $"L'instance n'attend pas la tâche {idTache}."
-                    : $"La tâche {idTache} est déjà {(tache.Statut == StatutTache.Completee ? "complétée" : "annulée")}.",
+                    : $"La tâche {idTache} est déjà {(tache.Statut == StatutTacheSentier.Completee ? "complétée" : "annulée")}.",
                 instance);
         }
 
-        if (tache.Statut == StatutTache.Annulee)
+        if (tache.Statut == StatutTacheSentier.Annulee)
         {
             return ResultatExecution.Aucun($"La tâche {idTache} est annulée chez le client ; l'instance l'attend toujours.", instance);
         }
@@ -86,7 +86,7 @@ internal sealed class ServiceSentier(
             return ResultatExecution.Aucun($"L'instance n'attend pas la tâche {idTache}.", instance);
         }
 
-        if (tache.Statut != StatutTache.Ouverte)
+        if (tache.Statut != StatutTacheSentier.Ouverte)
         {
             return ResultatExecution.Aucun($"La tâche {idTache} n'est plus ouverte.", instance);
         }

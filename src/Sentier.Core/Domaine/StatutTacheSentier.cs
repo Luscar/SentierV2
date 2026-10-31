@@ -1,7 +1,7 @@
 namespace Sentier;
 
 /// <summary>Statut d'une tâche utilisateur, tenu par le gestionnaire de tâches du client.</summary>
-public enum StatutTache
+public enum StatutTacheSentier
 {
     /// <summary>La tâche attend d'être complétée.</summary>
     Ouverte,

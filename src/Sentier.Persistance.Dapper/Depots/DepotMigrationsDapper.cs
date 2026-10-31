@@ -17,7 +17,7 @@ internal sealed class DepotMigrationsDapper(ContexteSql sql) : IDepotMigrations
                 idInstance = trace.IdInstance.Valeur,
                 source = trace.IdDefinitionSource.Valeur,
                 cible = trace.IdDefinitionCible.Valeur,
-                mode = CodesBase.Code(trace.Mode),
+                mode = CodesBaseDonnees.Code(trace.Mode),
                 detail = trace.Detail,
                 utilisateur = trace.Utilisateur,
                 dateMigration = trace.DateMigration,

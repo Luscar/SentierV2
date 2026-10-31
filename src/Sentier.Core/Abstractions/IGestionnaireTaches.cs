@@ -13,13 +13,13 @@ namespace Sentier;
 public interface IGestionnaireTaches
 {
     /// <summary>Crée une tâche ouverte pour un nœud interactif et retourne son identifiant.</summary>
-    Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct = default);
+    Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct = default);
 
     /// <summary>Tâche par identifiant, ou <c>null</c> si elle est inconnue.</summary>
-    Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, CancellationToken ct = default);
+    Task<TacheSentier?> ObtenirTacheAsync(long idTache, CancellationToken ct = default);
 
     /// <summary>Tâches ouvertes d'une instance.</summary>
-    Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
+    Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
 
     /// <summary>
     /// Marque une tâche complétée, avec les données de complétion reçues par <c>IServiceSentier.CompleterTacheAsync</c>.

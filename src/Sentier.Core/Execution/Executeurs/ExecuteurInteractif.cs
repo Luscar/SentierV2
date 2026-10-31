@@ -22,15 +22,15 @@ internal sealed class ExecuteurInteractif(ExecuteurAppels appels, IHorloge horlo
             ? maintenant + duree
             : noeud.VariableEcheance is not null ? contexte.Variables.Lire(noeud.VariableEcheance) as DateTime? : null;
 
-        var demande = new DemandeTacheUtilisateur
+        var demande = new DemandeTacheSentier
         {
             IdInstance = instance.Id,
             CleProcessus = instance.CleProcessus,
             CleAffaire = instance.CleAffaire,
             CodeNoeud = noeud.Code,
-            Nom = noeud.NomTache,
+            NomTache = noeud.NomTache,
             Role = noeud.Role,
-            Utilisateur = assigne,
+            Assigne = assigne,
             DateEcheance = echeance,
             Donnees = ExecuteurAppels.ResoudreParametres(noeud.Donnees, instance, contexte.Variables, libelle),
         };

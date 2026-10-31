@@ -228,38 +228,38 @@ au gestionnaire du client et garde seulement l'identifiant de la tâche attendue
 
 | Méthode | Appelée par Sentier | Exigence |
 |---|---|---|
-| `Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, ct)` | Entrée dans un nœud interactif, après les commandes d'entrée | Retourner l'identifiant de la tâche chez le client |
-| `Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, ct)` | Début de `CompleterTacheAsync` et `AssignerTacheAsync` | `null` si inconnue |
-| `Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance, ct)` | Annulation, reprise, migration, suivi | Peut être appelée sans transaction |
+| `Task<long> CreerTacheAsync(DemandeTacheSentier demande, ct)` | Entrée dans un nœud interactif, après les commandes d'entrée | Retourner l'identifiant de la tâche chez le client |
+| `Task<TacheSentier?> ObtenirTacheAsync(long idTache, ct)` | Début de `CompleterTacheAsync` et `AssignerTacheAsync` | `null` si inconnue |
+| `Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance, ct)` | Annulation, reprise, migration, suivi | Peut être appelée sans transaction |
 | `Task CompleterTacheAsync(long idTache, donnees, utilisateur, ct)` | Complétion, après les commandes de sortie | **Idempotente** |
 | `Task AssignerTacheAsync(long idTache, string utilisateur, ct)` | `IServiceSentier.AssignerTacheAsync`, seulement pour la tâche attendue | — |
 | `Task AnnulerTacheAsync(long idTache, string motif, ct)` | Annulation de l'instance, tâche orpheline, migration | **Idempotente** |
 | `Task RenommerNoeudAsync(IdInstance, ancienCode, nouveauCode, ct)` | Migration qui renomme le nœud interactif | — |
 
-`DemandeTacheUtilisateur` : `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Nom`, `Role`, `Utilisateur`,
-`DateEcheance`, `Donnees`. `TacheUtilisateur` (retournée au moteur) : `Id`, `IdInstance`, `CodeNoeud`,
+`DemandeTacheSentier` : `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `NomTache`, `Role`, `Assigne` (assignation automatique),
+`DateEcheance`, `Donnees`. `TacheSentier` (retournée au moteur) : `Id`, `IdInstance`, `CodeNoeud`,
 `Statut` (`Ouverte`, `Completee`, `Annulee`).
 
 ```csharp
 public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
 {
-    public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
-        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.Nom, demande.Role, demande.Utilisateur, ct);
+    public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
+        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.NomTache, demande.Role, demande.Assigne, ct);
 
-    public Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, CancellationToken ct)
+    public Task<TacheSentier?> ObtenirTacheAsync(long idTache, CancellationToken ct)
         => depot.ObtenirAsync(idTache, ct);
 
-    public Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
+    public Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
         => depot.OuvertesAsync(idInstance.Valeur, ct);
 
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Completee, ct);      // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Completee, ct);      // idempotent
 
     public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct)
         => depot.AssignerAsync(idTache, utilisateur, ct);
 
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Annulee, ct);        // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Annulee, ct);        // idempotent
 
     public Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct)
         => depot.RenommerNoeudAsync(idInstance.Valeur, ancienCode, nouveauCode, ct);

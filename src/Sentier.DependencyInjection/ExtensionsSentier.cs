@@ -44,7 +44,7 @@ public static class ExtensionsSentier
         services.AddSingleton(options);
         services.AddSingleton(registre);
         services.AddSingleton(new NomsObjets(options.PrefixeTables));
-        services.AddSingleton<IDialecteSql>(options.Dialecte == DialecteBase.Oracle ? new DialecteOracle() : new DialecteSqlite());
+        services.AddSingleton<IDialecteSql>(options.Dialecte == TypeBaseDonnees.Oracle ? new DialecteOracle() : new DialecteSqlite());
         services.TryAddSingleton<CacheDefinitions>();
         services.TryAddSingleton<IHorloge, HorlogeSysteme>();
         services.TryAddSingleton<ISerialiseurVariables, SerialiseurVariablesJson>();

@@ -215,23 +215,23 @@ Obligatoire dès qu'un processus contient un nœud `Interactif` (sinon le déplo
 ```csharp
 public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
 {
-    public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
-        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.Nom, demande.Role, ct);
+    public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
+        => depot.InsererAsync(demande.IdInstance.Valeur, demande.CodeNoeud, demande.NomTache, demande.Role, ct);
 
-    public Task<TacheUtilisateur?> ObtenirTacheAsync(long idTache, CancellationToken ct)
+    public Task<TacheSentier?> ObtenirTacheAsync(long idTache, CancellationToken ct)
         => depot.ObtenirAsync(idTache, ct);
 
-    public Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
+    public Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct)
         => depot.OuvertesAsync(idInstance.Valeur, ct);
 
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Completee, ct);       // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Completee, ct);       // idempotent
 
     public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct)
         => depot.AssignerAsync(idTache, utilisateur, ct);
 
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Annulee, ct);         // idempotent
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Annulee, ct);         // idempotent
 
     public Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct)
         => depot.RenommerNoeudAsync(idInstance.Valeur, ancienCode, nouveauCode, ct);

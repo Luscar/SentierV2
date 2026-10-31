@@ -171,7 +171,7 @@ Paramètres d'un appel : `Valeur(nom, valeur)` (statique), `Variable([nom, ]vari
 
 ## 6. Gestion des tâches
 
-Comme les définitions, les commandes et les requêtes, les tâches sont l'affaire du client : il implémente `IGestionnaireTaches`, injecté en Scoped. Sentier **ne stocke aucune tâche** (pas de table `_TACHE`) ; il délègue au gestionnaire chaque étape du cycle de vie (`TacheUtilisateur` : identifiant `long`, instance, nœud, statut).
+Comme les définitions, les commandes et les requêtes, les tâches sont l'affaire du client : il implémente `IGestionnaireTaches`, injecté en Scoped. Sentier **ne stocke aucune tâche** (pas de table `_TACHE`) ; il délègue au gestionnaire chaque étape du cycle de vie (`TacheSentier` : identifiant `long`, instance, nœud, statut).
 
 Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COURANTE` sur l'instance (`EtatInstance.IdTacheCourante`), écrit dans la transaction de Sentier. **Seule cette tâche reprend l'instance**, quel que soit le statut tenu par le client :
 
@@ -192,11 +192,11 @@ Sentier garde un seul lien : l'identifiant de la tâche attendue, `ID_TACHE_COUR
 ```csharp
 public sealed class MesTaches(IDepotTachesClient depot) : IGestionnaireTaches
 {
-    public Task<long> CreerTacheAsync(DemandeTacheUtilisateur demande, CancellationToken ct)
-        => depot.InsererAsync(demande.IdInstance, demande.CodeNoeud, demande.Nom, demande.Role, demande.Donnees, ct);
+    public Task<long> CreerTacheAsync(DemandeTacheSentier demande, CancellationToken ct)
+        => depot.InsererAsync(demande.IdInstance, demande.CodeNoeud, demande.NomTache, demande.Role, demande.Donnees, ct);
 
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
-        => depot.ChangerStatutAsync(idTache, StatutTache.Completee, utilisateur, ct);
+        => depot.ChangerStatutAsync(idTache, StatutTacheSentier.Completee, utilisateur, ct);
 
     // ObtenirTacheAsync, ObtenirTachesOuvertesAsync, AssignerTacheAsync, AnnulerTacheAsync, RenommerNoeudAsync…
 }
@@ -208,7 +208,7 @@ Exigences sur l'implémentation :
 
 - **Même transaction** que Sentier si elle est en base (même session). Sinon, les cas ci-dessus restent cohérents, mais une tâche orpheline reste visible chez le client jusqu'à la sortie du nœud.
 - **Idempotence** de `CompleterTacheAsync` et `AnnulerTacheAsync` : elles peuvent être rappelées pour une tâche déjà complétée ou annulée.
-- L'assignation initiale est dans la demande de création (`Role`, `Utilisateur`) ; une réassignation passe par `IServiceSentier.AssignerTacheAsync(idTache, utilisateur)`, qui vérifie que l'instance attend bien cette tâche avant d'appeler le gestionnaire.
+- L'assignation automatique (`.Assigne(...)`) est dans la demande de création (`Role`, `Assigne`) : `CreerTacheAsync` crée la tâche déjà assignée. Sentier ne conserve pas l'assigné : réassigner ou libérer une tâche peut se faire directement dans le bassin de tâches, tant que la tâche garde son identifiant et reste ouverte. `IServiceSentier.AssignerTacheAsync(idTache, utilisateur)` fait la même chose en vérifiant d'abord que l'instance attend bien cette tâche.
 - `ObtenirTachesOuvertesAsync` est aussi appelée par `ISuiviSentier`, éventuellement sans transaction. Le client complète une tâche par `IServiceSentier.CompleterTacheAsync(idTache, données, utilisateur)` : les données sont fusionnées pour les seules variables déclarées, les commandes de sortie s'exécutent, puis Sentier demande au gestionnaire de marquer la tâche complétée.
 
 ### Mise à jour d'une base existante

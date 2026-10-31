@@ -160,7 +160,7 @@ internal sealed class SuiviSentier(
     public Task<IReadOnlyList<Attente>> ObtenirAttentesAsync(IdInstance idInstance, CancellationToken ct = default)
         => attentes.ObtenirParInstanceAsync(idInstance, ct);
 
-    public async Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default)
         => moteur.TachesOptionnelles is { } taches ? await taches.ObtenirTachesOuvertesAsync(idInstance, ct) : [];
 
     public async Task<IReadOnlyList<EtatInstance>> ObtenirInstancesEnErreurAsync(int page = 0, int taille = 50, CancellationToken ct = default)

@@ -20,7 +20,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
                 id = attente.Id.Valeur,
                 idInstance = attente.IdInstance.Valeur,
                 codeNoeud = attente.CodeNoeud,
-                type = CodesBase.Code(attente.TypeDeclencheur),
+                type = CodesBaseDonnees.Code(attente.TypeDeclencheur),
                 nomSortie = attente.NomSortie,
                 dateEcheance = attente.DateEcheance,
                 nomSignal = attente.NomSignal,
@@ -66,7 +66,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
         var colonnes = string.Join(", ", Colonnes.Split(", ").Select(c => "a." + c));
         var requete =
             $"SELECT {colonnes} FROM {Table} a JOIN {sql.Noms.Instance} i ON i.NO_SEQ_INSTC_PROCS = a.NO_SEQ_INSTC_PROCS " +
-            $"WHERE a.TYP_DECLN = 'SIGNAL' AND a.NOM_SIGNL = @nom AND i.STAT IN {CodesBase.StatutsAuRepos} AND i.ID_NOEUD_COUR = a.ID_NOEUD";
+            $"WHERE a.TYP_DECLN = 'SIGNAL' AND a.NOM_SIGNL = @nom AND i.STAT IN {CodesBaseDonnees.StatutsAuRepos} AND i.ID_NOEUD_COUR = a.ID_NOEUD";
         if (signal.CleProcessus is not null)
         {
             requete += " AND i.CLE_DEFIN = @cleProcessus AND i.AGGRE_ID = @cleAffaire";
@@ -130,7 +130,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
             Id = new IdAttente(NO_SEQ_ATTEN_PROCS),
             IdInstance = new IdInstance(NO_SEQ_INSTC_PROCS),
             CodeNoeud = ID_NOEUD,
-            TypeDeclencheur = CodesBase.LireTypeDeclencheur(TYP_DECLN),
+            TypeDeclencheur = CodesBaseDonnees.LireTypeDeclencheur(TYP_DECLN),
             NomSortie = NOM_SORTI,
             DateEcheance = Utc(DH_ECHEA),
             NomSignal = NOM_SIGNL,

@@ -1,7 +1,7 @@
 namespace Sentier;
 
 /// <summary>Dialecte SQL de la base utilisée par Sentier.</summary>
-public enum DialecteBase
+public enum TypeBaseDonnees
 {
     /// <summary>Oracle (production).</summary>
     Oracle,

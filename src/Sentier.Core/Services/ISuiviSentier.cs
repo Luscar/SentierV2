@@ -28,7 +28,7 @@ public interface ISuiviSentier
     Task<IReadOnlyList<Attente>> ObtenirAttentesAsync(IdInstance idInstance, CancellationToken ct = default);
 
     /// <summary>Tâches utilisateurs ouvertes d'une instance, lues par le gestionnaire de tâches du client.</summary>
-    Task<IReadOnlyList<TacheUtilisateur>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
+    Task<IReadOnlyList<TacheSentier>> ObtenirTachesOuvertesAsync(IdInstance idInstance, CancellationToken ct = default);
 
     /// <summary>Instances en erreur, paginées (page à partir de 0).</summary>
     Task<IReadOnlyList<EtatInstance>> ObtenirInstancesEnErreurAsync(int page = 0, int taille = 50, CancellationToken ct = default);
