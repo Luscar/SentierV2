@@ -84,9 +84,12 @@ public sealed partial class ContexteSql
     /// <summary>Date optionnelle relue de la base, marquée UTC.</summary>
     public static DateTime? Utc(DateTime? date) => date is null ? null : Utc(date.Value);
 
-    /// <summary>Traduit les paramètres <c>@nom</c> dans la syntaxe du dialecte.</summary>
+    /// <summary>
+    /// Traduit les paramètres <c>@nom</c> dans la syntaxe du dialecte, sauf si l'exécuteur les traduit lui-même
+    /// (<see cref="IExecuteurSqlSentier.TraduitLesParametres"/>) : le SQL est alors transmis tel quel.
+    /// </summary>
     public string Traduire(string sql)
-        => Traductions.GetOrAdd((Dialecte.Type, sql), cle => RegexParametre().Replace(cle.Item2, m => Dialecte.Parametre(m.Groups[1].Value)));
+        => _executeur.TraduitLesParametres ? sql : Traductions.GetOrAdd((Dialecte.Type, sql), cle => RegexParametre().Replace(cle.Item2, m => Dialecte.Parametre(m.Groups[1].Value)));
 
     [GeneratedRegex(@"(?<![@\w])@(\w+)")]
     private static partial Regex RegexParametre();

@@ -163,8 +163,9 @@ Avec `Microsoft.Extensions.DependencyInjection`, alimenter plutôt `IAccesseurTr
 
 Si l'application fait tous ses appels par sa propre couche d'accès aux données (par exemple `IAccesBDPlus`, qui
 appelle Dapper avec `transaction: null`), Sentier peut passer par elle : un adaptateur `IExecuteurSqlSentier` de
-quatre méthodes, enregistré par `o.UtiliserExecuteurSql<T>()`. L'unité de travail n'enregistre alors **ni
-`IDbConnection` ni `IDbTransaction`** ; seul le `TransactionScope` porte la transaction :
+quatre méthodes, enregistré par `o.UtiliserExecuteurSql<T>()`. Si le wrapper traduit déjà les requêtes
+(traducteurs Oracle/SQLite d'`AccesBDPlus`), l'adaptateur déclare `TraduitLesParametres => true` et Sentier lui envoie
+ses paramètres en `@nom`. L'unité de travail n'enregistre alors **ni `IDbConnection` ni `IDbTransaction`** ; seul le `TransactionScope` porte la transaction :
 
 ```csharp
 using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);

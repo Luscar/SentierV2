@@ -7,7 +7,8 @@ namespace Sentier;
 /// Enregistré en Scoped.
 /// </summary>
 /// <remarks>
-/// Le SQL reçu est déjà dans la syntaxe du dialecte (paramètres <c>:nom</c> sous Oracle, <c>@nom</c> sous SQLite) ;
+/// Le SQL reçu est dans la syntaxe du dialecte (paramètres <c>:nom</c> sous Oracle, <c>@nom</c> sous SQLite), sauf si
+/// <see cref="TraduitLesParametres"/> est vrai : les paramètres restent alors en <c>@nom</c> ;
 /// les paramètres sont des objets anonymes dont les propriétés portent les noms des paramètres (convention Dapper), et
 /// les lignes lues sont mappées par nom de colonne sur des propriétés de même nom. Aucune transaction n'est passée :
 /// l'implémentation exécute ses commandes sur une connexion enrôlée dans le
@@ -28,4 +29,15 @@ public interface IExecuteurSqlSentier
 
     /// <summary>Retourne la première ligne mappée sur <typeparamref name="T"/>, ou la valeur par défaut s'il n'y en a pas.</summary>
     Task<T?> LirePremierOuDefautAsync<T>(string sql, object? parametres, CancellationToken ct);
+
+    /// <summary>
+    /// Vrai si l'implémentation traduit elle-même les paramètres dans la syntaxe de la base (par exemple un wrapper dont
+    /// le traducteur de requêtes change <c>@nom</c> en <c>:nom</c> sous Oracle). Sentier lui confie alors son SQL avec
+    /// des paramètres <c>@nom</c>, sans les traduire. Faux par défaut : Sentier traduit selon le dialecte.
+    /// </summary>
+    /// <remarks>
+    /// Seuls les marqueurs de paramètres sont concernés : la syntaxe propre à la base que Sentier construit lui-même
+    /// (limitation par <c>ROWNUM</c>, <c>FOR UPDATE SKIP LOCKED</c>, <c>NEXTVAL</c>, script DDL) reste dictée par le dialecte.
+    /// </remarks>
+    bool TraduitLesParametres => false;
 }
