@@ -2,7 +2,7 @@
 
 Moteur de processus (BPM) léger, distribué en packages NuGet pour .NET 10.
 
-Pour une première intégration, suivre le [guide de démarrage](docs/demarrage.md).
+Pour une première intégration, suivre le [guide de démarrage](docs/demarrage.md). La liste de tout ce que l'application client doit implémenter et enregistrer est dans [docs/integration-client.md](docs/integration-client.md).
 
 Les noms des objets de base suivent les mnémoniques de BpmPlus ; voir [docs/mnemoniques.md](docs/mnemoniques.md).
 
