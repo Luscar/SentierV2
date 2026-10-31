@@ -1,4 +1,3 @@
-using Dapper;
 
 namespace Sentier.Persistance.Dapper.Depots;
 
@@ -8,7 +7,7 @@ internal sealed class DepotMigrationsDapper(ContexteSql sql) : IDepotMigrations
     public async Task InsererAsync(TraceMigration trace, CancellationToken ct)
     {
         trace.Id = new IdMigration(await sql.ProchainIdAsync(sql.Noms.SeqMigration, ct));
-        await sql.Connexion.ExecuteAsync(sql.Ecriture(
+        await sql.ExecuterAsync(
             $"INSERT INTO {sql.Noms.Migration} (NO_SEQ_MIGRA_PROCS, NO_SEQ_INSTC_PROCS, NO_SEQ_DEFIN_SOURC, NO_SEQ_DEFIN_CIBLE, MODE_MIGRA, DETL, LOGON_UTIL, DH_MIGRA) " +
             "VALUES (@id, @idInstance, @source, @cible, @mode, @detail, @utilisateur, @dateMigration)",
             new
@@ -22,6 +21,6 @@ internal sealed class DepotMigrationsDapper(ContexteSql sql) : IDepotMigrations
                 utilisateur = trace.Utilisateur,
                 dateMigration = trace.DateMigration,
             },
-            ct));
+            ct);
     }
 }

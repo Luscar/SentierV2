@@ -1,4 +1,3 @@
-using Dapper;
 using static Sentier.Persistance.Dapper.ContexteSql;
 
 namespace Sentier.Persistance.Dapper.Depots;
@@ -13,7 +12,7 @@ internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique
     public async Task InsererAsync(PassageNoeud passage, CancellationToken ct)
     {
         passage.Id = new IdPassageNoeud(await sql.ProchainIdAsync(sql.Noms.SeqHistNoeud, ct));
-        await sql.Connexion.ExecuteAsync(sql.Ecriture(
+        await sql.ExecuterAsync(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @idInstance, @codeNoeud, @typeNoeud, @dateEntree, @dateSortie, @resultat)",
             new
             {
@@ -25,21 +24,21 @@ internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique
                 dateSortie = passage.DateSortie,
                 resultat = passage.Resultat,
             },
-            ct));
+            ct);
     }
 
     public Task FermerPassagesOuvertsAsync(IdInstance idInstance, DateTime dateSortie, string? resultat, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture(
+        => sql.ExecuterAsync(
             $"UPDATE {Table} SET DH_SORTI = @dateSortie, RESUL = @resultat WHERE NO_SEQ_INSTC_PROCS = @id AND DH_SORTI IS NULL",
             new { id = idInstance.Valeur, dateSortie, resultat },
-            ct));
+            ct);
 
     public async Task<IReadOnlyList<PassageNoeud>> ObtenirAsync(IdInstance idInstance, CancellationToken ct)
     {
-        var lignes = await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(
+        var lignes = await sql.LireAsync<Ligne>(
             $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id ORDER BY NO_SEQ_HIST_NOEUD_PROCS",
             new { id = idInstance.Valeur },
-            ct));
+            ct);
         return lignes.Select(l => new PassageNoeud
         {
             Id = new IdPassageNoeud(l.NO_SEQ_HIST_NOEUD_PROCS),

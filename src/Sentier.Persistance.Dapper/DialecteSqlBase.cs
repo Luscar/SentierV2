@@ -20,7 +20,7 @@ public abstract partial class DialecteSqlBase : IDialecteSql
     public abstract string Parametre(string nom);
 
     /// <inheritdoc />
-    public abstract Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct);
+    public abstract Task<long> ProchainIdentifiantAsync(IExecuteurSqlSentier executeur, NomsObjets noms, string nomSequence, CancellationToken ct);
 
     /// <inheritdoc />
     public abstract string Limiter(string sql, int taille);

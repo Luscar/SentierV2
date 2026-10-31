@@ -1,5 +1,3 @@
-using System.Data;
-using Dapper;
 using Sentier.Persistance.Dapper;
 
 namespace Sentier.Persistance.Oracle;
@@ -26,8 +24,8 @@ public sealed class DialecteOracle : DialecteSqlBase
     public override string Parametre(string nom) => ":" + nom;
 
     /// <inheritdoc />
-    public override Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
-        => connexion.ExecuteScalarAsync<long>(new CommandDefinition($"SELECT {nomSequence}.NEXTVAL FROM DUAL", transaction: transaction, cancellationToken: ct));
+    public override async Task<long> ProchainIdentifiantAsync(IExecuteurSqlSentier executeur, NomsObjets noms, string nomSequence, CancellationToken ct)
+        => await executeur.ExecuterScalaireAsync<long>($"SELECT {nomSequence}.NEXTVAL FROM DUAL", null, ct);
 
     /// <inheritdoc />
     public override string Limiter(string sql, int taille) => $"SELECT * FROM ({sql}) WHERE ROWNUM <= {taille}";

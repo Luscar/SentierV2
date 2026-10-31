@@ -8,8 +8,9 @@ Le pas-à-pas complet est dans le [guide de démarrage](demarrage.md) ; les règ
 
 | Contrat | Quand | Trouvé par | Durée de vie |
 |---|---|---|---|
-| `IDbConnection` (enregistrement) | **Toujours** | Enregistrée par le client | Portée |
-| Transaction : `IDbTransaction`, `IAccesseurTransactionSentier`, `ISessionSentier`, ou `TransactionScope` (Oracle) | **Toujours** (écritures) | Enregistrée ou alimentée par le client | Portée |
+| `IDbConnection` (enregistrement) | **Toujours**, sauf avec un exécuteur SQL du client (§ 3.2) | Enregistrée par le client | Portée |
+| `IExecuteurSqlSentier` | Optionnel : faire passer les requêtes de Sentier par la couche d'accès aux données du client (§ 3.2) | `UtiliserExecuteurSql<T>()` | Portée |
+| Transaction (écritures) : **au choix** un `TransactionScope` autour de la connexion (Oracle, aucune `IDbTransaction` à fournir), ou une `IDbTransaction` (enregistrée, ou via `IAccesseurTransactionSentier` / `ISessionSentier`) | **Toujours** (écritures) | Ouverte par le client | Portée |
 | `DefinitionSentier` + `[ProcessusSentier]` | **Toujours** : un par processus | Balayage | — |
 | `ICommandeSentier` / `CommandeSentier<T>` | Nœuds `Systemique`, commandes d'entrée et de sortie, calcul de migration | Balayage | Portée |
 | `IRequeteSentier` / `RequeteSentier<T>` | Branches de `Decision` calculées par code | Balayage | Portée |
@@ -46,7 +47,20 @@ var container = builder.Build();
 ```
 
 Puis, **pour chaque unité de travail** (requête web, message, itération de batch), une portée qui porte la connexion
-et la transaction du client :
+du client. Avec une transaction ambiante (Oracle), **seule l'`IDbConnection` est enregistrée** :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+using var connexion = fabriqueConnexions.Ouvrir();                           // ouverte DANS la portée : enrôlée
+
+await using var scope = container.BeginLifetimeScope(b =>
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());     // le client en reste propriétaire
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();                                                           // une exception : pas de Complete
+```
+
+Si l'application travaille plutôt avec une `IDbTransaction` (tests SQLite, par exemple), elle l'enregistre aussi :
 
 ```csharp
 using var connexion = fabriqueConnexions.Ouvrir();
@@ -54,7 +68,7 @@ using var transaction = connexion.BeginTransaction();
 
 await using var scope = container.BeginLifetimeScope(b =>
 {
-    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();     // le client en reste propriétaire
+    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();
     b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();
 });
 
@@ -74,7 +88,18 @@ services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();
 services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();
 ```
 
-Par portée, alimenter la transaction :
+Par portée, avec une transaction ambiante (Oracle), il suffit d'ouvrir le `TransactionScope` **avant** de résoudre
+la connexion (la fabrique `OuvrirConnexion()` l'ouvre alors dans la portée) :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+using var scope = provider.CreateScope();
+
+await scope.ServiceProvider.GetRequiredService<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+Avec une `IDbTransaction`, l'alimenter dans `IAccesseurTransactionSentier` :
 
 ```csharp
 using var scope = provider.CreateScope();
@@ -88,7 +113,7 @@ transaction.Commit();
 
 ### 2.3 Ce que Sentier n'enregistre jamais
 
-- l'`IDbConnection` et l'`IDbTransaction` : elles appartiennent au client ;
+- l'`IDbConnection` (et l'`IDbTransaction` s'il en utilise une) : elles appartiennent au client ;
 - `IContexteUtilisateurSentier`, les intercepteurs : à enregistrer par le client s'il en veut.
 
 ## 3. Contrats obligatoires
@@ -98,46 +123,94 @@ transaction.Commit();
 Sentier lit la connexion et la transaction par `ISessionSentier` (portée). L'implémentation par défaut prend :
 
 - la connexion : l'`IDbConnection` enregistrée dans la portée (déjà ouverte) ;
-- la transaction : celle d'`IAccesseurTransactionSentier` si le client l'a alimentée, sinon l'`IDbTransaction` de la portée.
+- la transaction, **facultative** : celle d'`IAccesseurTransactionSentier` si le client l'a alimentée, sinon
+  l'`IDbTransaction` de la portée, sinon aucune (transaction ambiante).
 
-Sentier **n'ouvre, ne valide et n'annule jamais** de transaction. Toute écriture sans transaction active lève
+Sentier **n'ouvre, ne valide et n'annule jamais** de transaction. Il en exige une pour écrire : une `IDbTransaction`,
+ou à défaut un `TransactionScope` actif (Oracle). Sans l'une ni l'autre, toute écriture lève
 `TransactionRequiseException`. Les commandes du client reçoivent la même connexion par injection et écrivent
 donc dans la même transaction.
 
-Pour brancher une unité de travail existante qui expose déjà sa connexion et sa transaction :
-
-```csharp
-public sealed class MaSession(UniteDeTravail uow) : ISessionSentier
-{
-    public IDbConnection Connexion => uow.Connexion;
-    public IDbTransaction? Transaction => uow.Transaction;
-}
-```
-
-Enregistrement : `o.UtiliserSession<MaSession>()`.
-
 **Application sans `IDbTransaction` (Oracle).** Si l'application n'enregistre que l'`IDbConnection` (ses appels Dapper
 passent `transaction: null`) et rend ses écritures atomiques avec un `TransactionScope`, rien d'autre n'est à fournir :
-Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée.
-
-```csharp
-using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-using var connexion = fabriqueConnexions.Ouvrir();                           // ouverte DANS la portée : enrôlée
-
-await using var scope = container.BeginLifetimeScope(b =>
-    b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());
-
-await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
-portee.Complete();
-```
+Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée (exemple au § 2.1).
 
 - La connexion doit être ouverte **à l'intérieur** de la portée ; `TransactionScopeAsyncFlowOption.Enabled` est nécessaire avec `async`.
 - **Oracle seulement** : Microsoft.Data.Sqlite ne s'enrôle pas dans un `TransactionScope`. Avec SQLite, Sentier refuse
   d'écrire (`TransactionRequiseException`) plutôt que de valider chaque instruction immédiatement ; les tests SQLite
   fournissent une `IDbTransaction`.
-- Sans `IDbTransaction` ni `TransactionScope`, Sentier refuse toujours d'écrire.
 
-### 3.2 Définitions de processus
+**Unité de travail existante.** Pour brancher une unité de travail qui expose déjà sa connexion et, le cas échéant, sa transaction :
+
+```csharp
+public sealed class MaSession(UniteDeTravail uow) : ISessionSentier
+{
+    public IDbConnection Connexion => uow.Connexion;
+    public IDbTransaction? Transaction => uow.Transaction;    // null avec un TransactionScope
+}
+```
+
+Enregistrement : `o.UtiliserSession<MaSession>()`.
+
+### 3.2 Passer par sa propre couche d'accès aux données — `IExecuteurSqlSentier`
+
+Par défaut, Sentier exécute ses requêtes avec Dapper sur l'`IDbConnection` de la portée. Une application qui fait
+tous ses appels par un wrapper maison autour de Dapper (par exemple `IAccesBDPlus`, qui regroupe
+`IAccesBDEcriturePlus` et `IAccesBDLecturePlus`) peut y faire passer Sentier aussi. Il suffit d'un adaptateur de quatre méthodes :
+
+```csharp
+public sealed class ExecuteurSqlAccesBDPlus(IAccesBDPlus accesBD) : IExecuteurSqlSentier
+{
+    public Task<int> ExecuterAsync(string sql, object? parametres, CancellationToken ct)
+        => accesBD.ExecuteNonQueryAsync(sql, parametres, ct);
+
+    public Task<T?> ExecuterScalaireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.ExecuteScalarAsync<T>(sql, parametres, ct);
+
+    public Task<IEnumerable<T>> LireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.QueryAsync<T>(sql, parametres, ct);
+
+    public Task<T?> LirePremierOuDefautAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.QueryFirstOrDefaultAsync<T>(sql, parametres, ct);
+}
+```
+
+Enregistrement (Autofac ou `Microsoft.Extensions.DependencyInjection`, même option) :
+
+```csharp
+builder.RegisterModule(new ModuleSentier(o => o
+    .UtiliserOracle("SENTIER")
+    .BalayerAssemblyDe<Program>()
+    .UtiliserExecuteurSql<ExecuteurSqlAccesBDPlus>()));
+```
+
+L'unité de travail n'enregistre alors **plus rien pour Sentier** : ni `IDbConnection`, ni `IDbTransaction` (inutile : le
+wrapper passe `transaction: null`).
+`IAccesBDPlus` reste résolu comme d'habitude dans la portée, et le `TransactionScope` rend l'ensemble atomique :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+await using var scope = container.BeginLifetimeScope();
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+Ce que l'adaptateur reçoit et doit respecter :
+
+- **Le SQL est déjà dans la syntaxe du dialecte** : paramètres `:nom` sous Oracle, `@nom` sous SQLite.
+- **Les paramètres sont des objets Dapper** : objets anonymes, `DynamicParameters`, et listes développées par Dapper
+  (`STAT IN :statuts`). Le wrapper doit les transmettre tels quels à Dapper.
+- **Les lignes sont mappées par nom de colonne** (`QueryAsync<T>` de Dapper).
+- **Aucune `IDbTransaction`** : l'interface ne transporte pas de transaction, le wrapper appelle Dapper avec
+  `transaction: null`. Le `TransactionScope` est la seule transaction : la connexion du wrapper doit être ouverte
+  **dans** la portée pour y être enrôlée. Sentier vérifie avant d'écrire qu'un `TransactionScope` est actif
+  (sinon `TransactionRequiseException`).
+- `GetSequenceAsync` n'est pas nécessaire : Sentier lit ses séquences par `ExecuterScalaireAsync<long>`
+  (`SELECT … .NEXTVAL FROM DUAL`).
+- `InstallateurSchemaSentier` passe aussi par l'exécuteur.
+
+### 3.3 Définitions de processus
 
 Une classe par processus, dérivée de `DefinitionSentier`, avec la clé du processus :
 
@@ -304,6 +377,7 @@ Utilisation : `SimulerMigrationAsync` (rapport, rien n'est écrit), puis `Migrer
 | `IIntercepteurRequeteSentier` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequeteSentier contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
 | `ISerialiseurVariablesSentier` | `string Serialiser(valeurs)` ; `Dictionary<string, object?> Deserialiser(json, types)` | Remplacer le stockage JSON des variables |
 | `ISessionSentier` | `IDbConnection Connexion` ; `IDbTransaction? Transaction` | Session sur mesure (§ 3.1), par `UtiliserSession<T>()` |
+| `IExecuteurSqlSentier` | `ExecuterAsync` ; `ExecuterScalaireAsync<T>` ; `LireAsync<T>` ; `LirePremierOuDefautAsync<T>` | Couche d'accès aux données du client (§ 3.2), par `UtiliserExecuteurSql<T>()` |
 
 Plusieurs intercepteurs peuvent être enregistrés : ils s'enchaînent dans l'ordre d'enregistrement.
 
@@ -329,7 +403,7 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 ## 7. Liste de contrôle
 
 - [ ] `ModuleSentier` (ou `AddSentier`) avec préfixe, dialecte et `BalayerAssemblyDe<T>()` pour chaque assembly concerné.
-- [ ] Une portée par unité de travail, avec `IDbConnection` ouverte et la transaction, ou un `TransactionScope` sous Oracle (§ 2, § 3.1).
+- [ ] Une portée par unité de travail, avec l'`IDbConnection` ouverte dans un `TransactionScope` (Oracle), ou avec une `IDbTransaction` (§ 2, § 3.1) — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` et un `TransactionScope`, sans `IDbConnection` ni `IDbTransaction` (§ 3.2).
 - [ ] Une `DefinitionSentier` + `[ProcessusSentier]` par processus ; `DeployerDefinitionsAsync()` au démarrage.
 - [ ] Une `ICommandeSentier` par commande référencée ; une `IRequeteSentier` par décision calculée.
 - [ ] `IGestionnaireTachesSentier` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.

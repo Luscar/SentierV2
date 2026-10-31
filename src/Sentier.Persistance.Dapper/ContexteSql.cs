@@ -1,28 +1,28 @@
 using System.Collections.Concurrent;
 using System.Data;
 using System.Text.RegularExpressions;
-using Dapper;
 
 namespace Sentier.Persistance.Dapper;
 
 /// <summary>
-/// Accès commun des dépôts à la session du client, au dialecte et aux noms d'objets. Enregistré en Scoped.
-/// La transaction est passée systématiquement à chaque requête ; les écritures l'exigent
-/// (<see cref="IDbTransaction"/> du client, ou transaction ambiante : la commande part alors avec <c>transaction: null</c>).
+/// Accès commun des dépôts à l'exécuteur SQL, au dialecte et aux noms d'objets. Enregistré en Scoped.
+/// Les écritures exigent une transaction active (<see cref="IDbTransaction"/> du client, ou transaction ambiante) ;
+/// le SQL est traduit dans la syntaxe du dialecte puis confié à <see cref="IExecuteurSqlSentier"/>.
 /// </summary>
 public sealed partial class ContexteSql
 {
     private static readonly ConcurrentDictionary<(TypeBaseDonnees, string), string> Traductions = new();
 
     private readonly ISessionSentier _session;
+    private readonly IExecuteurSqlSentier _executeur;
 
     /// <summary>Crée le contexte.</summary>
-    public ContexteSql(ISessionSentier session, IDialecteSql dialecte, NomsObjets noms)
+    public ContexteSql(ISessionSentier session, IExecuteurSqlSentier executeur, IDialecteSql dialecte, NomsObjets noms)
     {
         _session = session;
+        _executeur = executeur;
         Dialecte = dialecte;
         Noms = noms;
-        SentierDapper.EnregistrerGestionnairesTypes();
     }
 
     /// <summary>Dialecte SQL.</summary>
@@ -31,23 +31,41 @@ public sealed partial class ContexteSql
     /// <summary>Noms des objets.</summary>
     public NomsObjets Noms { get; }
 
-    /// <summary>Connexion du client.</summary>
-    public IDbConnection Connexion => _session.Connexion;
+    /// <summary>Écriture (INSERT, UPDATE, DELETE) : transaction obligatoire.</summary>
+    public Task<int> ExecuterAsync(string sql, object? parametres, CancellationToken ct)
+    {
+        ExigerTransactionEcriture();
+        return _executeur.ExecuterAsync(Traduire(sql), parametres, ct);
+    }
 
-    /// <summary>Commande de lecture (transaction courante si elle existe).</summary>
-    public CommandDefinition Lecture(string sql, object? parametres, CancellationToken ct)
-        => new(Traduire(sql), parametres, _session.Transaction, cancellationToken: ct);
+    /// <summary>Lecture de toutes les lignes (transaction facultative).</summary>
+    public Task<IEnumerable<T>> LireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => _executeur.LireAsync<T>(Traduire(sql), parametres, ct);
 
-    /// <summary>Commande d'écriture (transaction du client ou transaction ambiante obligatoire).</summary>
-    public CommandDefinition Ecriture(string sql, object? parametres, CancellationToken ct)
-        => new(Traduire(sql), parametres, TransactionEcriture(), cancellationToken: ct);
+    /// <summary>Lecture de la première ligne (transaction facultative).</summary>
+    public Task<T?> LirePremierAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => _executeur.LirePremierOuDefautAsync<T>(Traduire(sql), parametres, ct);
+
+    /// <summary>Lecture de la première ligne avec verrouillage (<c>FOR UPDATE</c>) : transaction obligatoire.</summary>
+    public Task<T?> VerrouillerPremierAsync<T>(string sql, object? parametres, CancellationToken ct)
+    {
+        ExigerTransactionEcriture();
+        return _executeur.LirePremierOuDefautAsync<T>(Traduire(sql), parametres, ct);
+    }
+
+    /// <summary>Lecture d'une valeur (transaction facultative).</summary>
+    public Task<T?> LireScalaireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => _executeur.ExecuterScalaireAsync<T>(Traduire(sql), parametres, ct);
 
     /// <summary>Identifiant suivant d'une séquence.</summary>
     public Task<long> ProchainIdAsync(string nomSequence, CancellationToken ct)
-        => Dialecte.ProchainIdentifiantAsync(Connexion, TransactionEcriture(), Noms, nomSequence, ct);
+    {
+        ExigerTransactionEcriture();
+        return Dialecte.ProchainIdentifiantAsync(_executeur, Noms, nomSequence, ct);
+    }
 
     // Transaction ambiante (null) acceptée seulement si le dialecte s'y enrôle ; sinon l'écriture serait validée immédiatement.
-    private IDbTransaction? TransactionEcriture()
+    private void ExigerTransactionEcriture()
     {
         var transaction = _session.ExigerTransaction();
         if (transaction is null && !Dialecte.SupporteTransactionAmbiante)
@@ -55,8 +73,6 @@ public sealed partial class ContexteSql
             throw new TransactionRequiseException(
                 $"Le dialecte {Dialecte.Type} ne s'enrôle pas dans une transaction ambiante (TransactionScope) : fournir une IDbTransaction via ISessionSentier.");
         }
-
-        return transaction;
     }
 
     /// <summary>Booléen stocké en nombre (<c>NUMBER(1)</c> / <c>INTEGER</c>).</summary>

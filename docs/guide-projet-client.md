@@ -109,37 +109,42 @@ services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();     // option
 
 ## 4. Unité de travail : connexion et transaction
 
-Sentier lit la connexion et la transaction **dans la portée DI** ; aucun appel ne prend de connexion en paramètre.
-Il n'ouvre, ne valide et n'annule **jamais** de transaction. Centraliser ce code dans une classe réutilisée par les
-contrôleurs, le batch et les tests :
+Sentier lit la connexion **dans la portée DI** ; aucun appel ne prend de connexion en paramètre. Le client
+n'enregistre que son `IDbConnection` : l'`IDbTransaction` est facultative. Sentier n'ouvre, ne valide et n'annule
+**jamais** de transaction, mais en exige une pour écrire. Centraliser ce code dans une classe réutilisée par les
+contrôleurs, le batch et les tests. Pour une application Oracle dont les appels Dapper passent `transaction: null` :
 
 ```csharp
 public sealed class UniteTravailSentier(ILifetimeScope container, IFabriqueConnexions fabrique)
 {
     public async Task<T> ExecuterAsync<T>(Func<ILifetimeScope, Task<T>> action)
     {
-        using var connexion = fabrique.Ouvrir();
-        using var transaction = connexion.BeginTransaction();
+        using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+        using var connexion = fabrique.Ouvrir();                                       // ouverte DANS la portée : enrôlée
 
         await using var scope = container.BeginLifetimeScope(b =>
-        {
-            b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned();      // le client en reste propriétaire
-            b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();
-        });
+            b.RegisterInstance(connexion).As<IDbConnection>().ExternallyOwned());      // le client en reste propriétaire
 
-        var resultat = await action(scope);   // une exception remonte : pas de Commit
-        transaction.Commit();
+        var resultat = await action(scope);   // une exception remonte : pas de Complete, tout est annulé
+        portee.Complete();
         return resultat;
     }
 }
 ```
 
-- Si l'application a déjà son unité de travail, y enregistrer **sa** connexion et **sa** transaction : écritures
-  métier et écritures de Sentier sont validées ensemble.
-- Avec `Microsoft.Extensions.DependencyInjection` : `scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;`
-- Oracle sans `IDbTransaction` : un `TransactionScope` (connexion ouverte **dans** la portée,
-  `TransactionScopeAsyncFlowOption.Enabled`) suffit. SQLite ne le supporte pas.
-- Toute écriture sans transaction lève `TransactionRequiseException`. Les lectures (`ISuiviSentier`) acceptent l'absence de transaction.
+- La connexion est ouverte **dans** la portée (sinon elle n'y est pas enrôlée) ; `TransactionScopeAsyncFlowOption.Enabled`
+  est nécessaire avec `async`. Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée.
+- Si l'application a déjà son unité de travail, y enregistrer **sa** connexion : écritures métier et écritures de
+  Sentier sont validées ensemble.
+- **Variante `IDbTransaction`** (application qui ouvre elle-même sa transaction, ou SQLite, qui ne s'enrôle pas dans
+  un `TransactionScope`) : enregistrer aussi `b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();`
+  et appeler `transaction.Commit()` ; avec `Microsoft.Extensions.DependencyInjection`,
+  `scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;`.
+- **Wrapper maison autour de Dapper** (ex. `IAccesBDPlus`) : un adaptateur `IExecuteurSqlSentier` et
+  `o.UtiliserExecuteurSql<T>()` font passer les requêtes de Sentier par ce wrapper ; plus aucune `IDbConnection` à
+  enregistrer (voir [integration-client.md](integration-client.md), § 3.2).
+- Toute écriture sans transaction (ni `TransactionScope`, ni `IDbTransaction`) lève `TransactionRequiseException`.
+  Les lectures (`ISuiviSentier`) acceptent l'absence de transaction.
 
 ## 5. Organisation du projet
 
@@ -487,7 +492,7 @@ chemin principal dans la suite du déroulement, exceptions dans les branches ; �
 
 - [ ] Tables créées avec le bon préfixe (script DBA, ou `InstallerAsync` en test).
 - [ ] `ModuleSentier` / `AddSentier` avec le même préfixe et `BalayerAssemblyDe<…>()` pour chaque assembly concerné.
-- [ ] Une unité de travail qui enregistre `IDbConnection` et `IDbTransaction` (`ExternallyOwned`) et valide.
+- [ ] Une unité de travail qui enregistre l'`IDbConnection` (`ExternallyOwned`), ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, et valide — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` (`UtiliserExecuteurSql<T>()`) et un `TransactionScope`.
 - [ ] Une `DefinitionSentier` par processus, clé fixée par `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.
 - [ ] `IGestionnaireTachesSentier` si un nœud interactif existe : lit `demande.Assigne`, même transaction, complétion et annulation idempotentes.
@@ -500,8 +505,8 @@ chemin principal dans la suite du déroulement, exceptions dans les branches ; �
 
 | Symptôme | Cause | Correction |
 |---|---|---|
-| `TransactionRequiseException` | Pas de transaction dans la portée, ou déjà validée. | Enregistrer `IDbTransaction` (ou alimenter `IAccesseurTransactionSentier`) avant l'appel. |
-| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine. | Résoudre depuis la portée de l'unité de travail. |
+| `TransactionRequiseException` | Ni `TransactionScope` actif ni `IDbTransaction`, ou transaction déjà validée ; ou `TransactionScope` avec SQLite. | Oracle : ouvrir la connexion dans un `TransactionScope`. Sinon : enregistrer une `IDbTransaction` (ou alimenter `IAccesseurTransactionSentier`) avant l'appel. |
+| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine, ou application qui passe par son propre wrapper. | Résoudre depuis la portée de l'unité de travail ; avec un wrapper maison, `UtiliserExecuteurSql<T>()`. |
 | Connexion disposée à la fin de la portée | Enregistrée sans `ExternallyOwned()`. | Ajouter `ExternallyOwned()`. |
 | `DefinitionInvalideException` à la construction | Définition incohérente. | Lire la liste complète des erreurs de l'exception. |
 | Déploiement refusé : commande ou requête non enregistrée | Classe hors des assemblys balayés, ou renommée alors qu'une ancienne version l'utilise. | `BalayerAssemblyDe<…>()`, ou `[CommandeSentier("AncienNom")]` / `[RequeteSentier("AncienNom")]`. |

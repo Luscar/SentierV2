@@ -14,14 +14,14 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     public async Task<InstanceProcessus?> ObtenirAsync(IdInstance id, CancellationToken ct)
     {
-        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Lecture($"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = id.Valeur }, ct));
+        var ligne = await sql.LirePremierAsync<Ligne>($"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = id.Valeur }, ct);
         return ligne?.VersDomaine();
     }
 
     public async Task InsererAsync(InstanceProcessus instance, CancellationToken ct)
     {
         instance.Id = new IdInstance(await sql.ProchainIdAsync(sql.Noms.SeqInstance, ct));
-        await sql.Connexion.ExecuteAsync(sql.Ecriture(
+        await sql.ExecuterAsync(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @idDefinition, @cleProcessus, @idParent, @codeNoeudParent, @cleAffaire, @instanceUnique, @statut, @codeFin, " +
             "@codeNoeudCourant, @idTacheCourante, @variables, @messageErreur, @dateErreur, @version, @dateCreation, @dateMaj, @dateFin)",
             new
@@ -45,12 +45,12 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
                 dateMaj = instance.DateMaj,
                 dateFin = instance.DateFin,
             },
-            ct));
+            ct);
     }
 
     public async Task MettreAJourAsync(InstanceProcessus instance, CancellationToken ct)
     {
-        var lignes = await sql.Connexion.ExecuteAsync(sql.Ecriture(
+        var lignes = await sql.ExecuterAsync(
             $"UPDATE {Table} SET NO_SEQ_DEFIN_PROCS = @idDefinition, STAT = @statut, ID_NOEUD_FIN = @codeFin, ID_NOEUD_COUR = @codeNoeudCourant, ID_TACH_EXTE = @idTacheCourante, " +
             "VAR_JSON = @variables, MESS_ERR = @messageErreur, DH_ERR = @dateErreur, DH_MODIF = @dateMaj, DH_FIN = @dateFin, " +
             "VERSI = VERSI + 1 WHERE NO_SEQ_INSTC_PROCS = @id AND VERSI = @version",
@@ -69,7 +69,7 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
                 dateFin = instance.DateFin,
                 version = instance.Version,
             },
-            ct));
+            ct);
 
         if (lignes != 1)
         {
@@ -145,22 +145,22 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
 
     public async Task<IReadOnlyList<CompteInstancesActives>> CompterActivesAsync(string cleProcessus, CancellationToken ct)
     {
-        var lignes = await sql.Connexion.QueryAsync<LigneCompte>(sql.Lecture(
+        var lignes = await sql.LireAsync<LigneCompte>(
             $"SELECT i.NO_SEQ_DEFIN_PROCS AS NO_SEQ_DEFIN_PROCS, d.VERSI AS VERSI, i.ID_NOEUD_COUR AS ID_NOEUD, COUNT(*) AS NOMBRE " +
             $"FROM {Table} i JOIN {sql.Noms.Definition} d ON d.NO_SEQ_DEFIN_PROCS = i.NO_SEQ_DEFIN_PROCS " +
             $"WHERE i.CLE_DEFIN = @cle AND i.STAT IN {CodesBaseDonnees.StatutsActifs} " +
             "GROUP BY i.NO_SEQ_DEFIN_PROCS, d.VERSI, i.ID_NOEUD_COUR ORDER BY d.VERSI, i.ID_NOEUD_COUR",
             new { cle = cleProcessus },
-            ct));
+            ct);
         return lignes.Select(l => new CompteInstancesActives(new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l.VERSI, l.ID_NOEUD, l.NOMBRE)).ToList();
     }
 
     public async Task<IReadOnlyDictionary<IdDefinition, int>> CompterActivesParVersionAsync(CancellationToken ct)
     {
-        var lignes = await sql.Connexion.QueryAsync<LigneCompteVersion>(sql.Lecture(
+        var lignes = await sql.LireAsync<LigneCompteVersion>(
             $"SELECT NO_SEQ_DEFIN_PROCS, COUNT(*) AS NOMBRE FROM {Table} WHERE STAT IN {CodesBaseDonnees.StatutsActifs} GROUP BY NO_SEQ_DEFIN_PROCS",
             null,
-            ct));
+            ct);
         return lignes.ToDictionary(l => new IdDefinition(l.NO_SEQ_DEFIN_PROCS), l => l.NOMBRE);
     }
 
@@ -176,13 +176,13 @@ internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances
     }
 
     public Task RenommerNoeudParentAsync(IdInstance idParent, string ancienCode, string nouveauCode, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture(
+        => sql.ExecuterAsync(
             $"UPDATE {Table} SET ID_NOEUD_PARN = @nouveau WHERE ID_INSTC_PARN = @id AND ID_NOEUD_PARN = @ancien AND STAT IN {CodesBaseDonnees.StatutsActifs}",
             new { id = idParent.Valeur, ancien = ancienCode, nouveau = nouveauCode },
-            ct));
+            ct);
 
     private async Task<IReadOnlyList<InstanceProcessus>> ListerAsync(string requete, object? parametres, CancellationToken ct)
-        => (await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(requete, parametres, ct))).Select(l => l.VersDomaine()).ToList();
+        => (await sql.LireAsync<Ligne>(requete, parametres, ct)).Select(l => l.VersDomaine()).ToList();
 
     private sealed class LigneCompteVersion
     {

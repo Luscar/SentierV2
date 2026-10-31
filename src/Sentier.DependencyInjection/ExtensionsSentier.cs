@@ -86,7 +86,16 @@ public static class ExtensionsSentier
             services.TryAddScoped(type);
         }
 
-        // Persistance Dapper.
+        // Persistance : exécuteur SQL du client, sinon Dapper sur l'IDbConnection de la portée.
+        if (options.TypeExecuteurSql is not null)
+        {
+            services.Replace(ServiceDescriptor.Scoped(typeof(IExecuteurSqlSentier), options.TypeExecuteurSql));
+        }
+        else
+        {
+            services.TryAddScoped<IExecuteurSqlSentier, ExecuteurSqlDapper>();
+        }
+
         services.TryAddScoped<ContexteSql>();
         services.TryAddScoped<IDepotDefinitions, DepotDefinitionsDapper>();
         services.TryAddScoped<IDepotInstances, DepotInstancesDapper>();
