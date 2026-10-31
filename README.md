@@ -16,9 +16,7 @@ Exemple complet d'un processus parent composé de sous-processus (corrections, a
 | Package | Contenu |
 |---|---|
 | `Sentier.Core` | Domaine, constructeur de définitions, moteur, abstractions. Aucune dépendance à une base. |
-| `Sentier.Persistance.Dapper` | Dépôts Dapper, noms préfixés, abstraction `IDialecteSql`, installateur de schéma. |
-| `Sentier.Persistance.Oracle` | Dialecte Oracle et script DDL (tables + séquences). |
-| `Sentier.Persistance.Sqlite` | Dialecte SQLite et script DDL. |
+| `Sentier.Persistance` | Dépôts Dapper, noms préfixés, dialectes Oracle et SQLite (`IDialecteSql`), scripts DDL, installateur de schéma. |
 | `Sentier.DependencyInjection` | Extension `AddSentier`. |
 | `Sentier.Autofac` | Module Autofac `ModuleSentier`. |
 
@@ -53,7 +51,7 @@ _container = builder.Build();
 
 `AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateurSentier` (utilisateur courant, pour l'audit), `IIntercepteurCommandeSentier`, `IIntercepteurRequeteSentier`, et un `IHorlogeSentier` ou `ISerialiseurVariablesSentier` personnalisé.
 
-Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (pratique avec SQLite) ou remis à un DBA via `GenererScript()`. Les scripts sont aussi dans `src/Sentier.Persistance.*/Scripts`.
+Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (pratique avec SQLite) ou remis à un DBA via `GenererScript()`. Les scripts sont aussi dans `src/Sentier.Persistance/Scripts/Oracle` et `src/Sentier.Persistance/Scripts/Sqlite`.
 
 ## 2. Connexion et transaction
 
@@ -238,7 +236,7 @@ Exigences sur l'implémentation :
 
 ### Mise à jour d'une base existante
 
-Les bases créées avant ce changement ont une table `_TACHE` que Sentier ne lit plus. Le script `Scripts/mise-a-jour-gestionnaire-taches.sql` (Oracle et SQLite, préfixe `{{P}}` à remplacer) ajoute `ID_TACHE_COURANTE` à partir des tâches ouvertes, recrée la vue, liste les tâches ouvertes à reprendre dans le stockage du client (`ID_TACHE_EXTERNE` devient l'identifiant) et, en commentaire, supprime `_TACHE` une fois la reprise vérifiée. À exécuter application arrêtée, avant le déploiement.
+Les bases créées avant ce changement ont une table `_TACHE` que Sentier ne lit plus. Le script `mise-a-jour-gestionnaire-taches.sql` (`src/Sentier.Persistance/Scripts/Oracle` et `.../Sqlite`, préfixe `{{P}}` à remplacer) ajoute `ID_TACHE_COURANTE` à partir des tâches ouvertes, recrée la vue, liste les tâches ouvertes à reprendre dans le stockage du client (`ID_TACHE_EXTERNE` devient l'identifiant) et, en commentaire, supprime `_TACHE` une fois la reprise vérifiée. À exécuter application arrêtée, avant le déploiement.
 
 ## 7. Déploiement et migration
 

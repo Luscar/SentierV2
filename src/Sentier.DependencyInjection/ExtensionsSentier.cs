@@ -4,10 +4,7 @@ using Sentier.Commandes;
 using Sentier.Execution;
 using Sentier.Execution.Executeurs;
 using Sentier.Persistance;
-using Sentier.Persistance.Dapper;
-using Sentier.Persistance.Dapper.Depots;
-using Sentier.Persistance.Oracle;
-using Sentier.Persistance.Sqlite;
+using Sentier.Persistance.Depots;
 using Sentier.Services;
 using Sentier.Variables;
 

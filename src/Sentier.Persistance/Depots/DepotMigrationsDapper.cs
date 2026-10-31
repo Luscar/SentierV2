@@ -1,5 +1,5 @@
 
-namespace Sentier.Persistance.Dapper.Depots;
+namespace Sentier.Persistance.Depots;
 
 /// <summary>Dépôt Dapper des traces de migration.</summary>
 internal sealed class DepotMigrationsDapper(ContexteSql sql) : IDepotMigrations

@@ -1,6 +1,4 @@
-using Sentier.Persistance.Dapper;
-
-namespace Sentier.Persistance.Oracle;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Dialecte Oracle : paramètres <c>:p</c>, identifiants par séquence (<c>NEXTVAL</c>),
@@ -18,7 +16,7 @@ public sealed class DialecteOracle : DialecteSqlBase
     public override bool SupporteTransactionAmbiante => true;
 
     /// <inheritdoc />
-    protected override string RessourceScript => "Sentier.Persistance.Oracle.Scripts.oracle.sql";
+    protected override string RessourceScript => "Sentier.Persistance.Scripts.oracle.sql";
 
     /// <inheritdoc />
     public override string Parametre(string nom) => ":" + nom;

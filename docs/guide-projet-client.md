@@ -46,7 +46,7 @@ Tous les types que le client implémente ou reçoit dans ses implémentations po
 |---|---|
 | `Sentier.Autofac` | Application sur Autofac. |
 | `Sentier.DependencyInjection` | Application sur `Microsoft.Extensions.DependencyInjection`. |
-| `Sentier.Persistance.Oracle` / `Sentier.Persistance.Sqlite` | Dialecte (Oracle en production, SQLite pour les tests). |
+| `Sentier.Persistance` | Dépôts et dialectes (Oracle en production, SQLite pour les tests) ; amené par `Sentier.DependencyInjection`. |
 | `Microsoft.Data.Sqlite` | Projet de tests. |
 
 Sentier ne travaille qu'avec `IDbConnection` : le fournisseur Oracle est celui que l'application utilise déjà.

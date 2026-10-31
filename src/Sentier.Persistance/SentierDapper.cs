@@ -1,7 +1,7 @@
 using System.Data;
 using Dapper;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>Configuration de Dapper pour Sentier.</summary>
 public static class SentierDapper

@@ -1,6 +1,4 @@
-using Sentier.Persistance.Dapper;
-
-namespace Sentier.Persistance.Sqlite;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Dialecte SQLite : paramètres <c>@p</c>, séquences émulées par la table <c>{Prefixe}_SEQ</c>
@@ -19,7 +17,7 @@ public sealed class DialecteSqlite : DialecteSqlBase
     public override bool SupporteTransactionAmbiante => false;
 
     /// <inheritdoc />
-    protected override string RessourceScript => "Sentier.Persistance.Sqlite.Scripts.sqlite.sql";
+    protected override string RessourceScript => "Sentier.Persistance.Scripts.sqlite.sql";
 
     /// <inheritdoc />
     public override string Parametre(string nom) => "@" + nom;

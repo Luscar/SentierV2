@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>Différences de syntaxe et de comportement entre bases (Oracle, SQLite).</summary>
 public interface IDialecteSql

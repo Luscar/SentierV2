@@ -1,6 +1,6 @@
 using Dapper;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Exécuteur SQL par défaut : Dapper sur la connexion et la transaction de <see cref="ISessionSentier"/>

@@ -1,4 +1,4 @@
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Génère et exécute le DDL de Sentier avec le préfixe configuré, via l'exécuteur SQL (connexion du client par défaut)
