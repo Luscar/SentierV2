@@ -1,5 +1,7 @@
 # Guide de démarrage
 
+> Tous les contrats à implémenter côté client et leur enregistrement sont résumés dans [Intégrer Sentier dans une application client](integration-client.md).
+
 Ce guide mène une application cliente de l'installation au premier processus exécuté. Les détails sont dans le [README](../README.md) ; l'écriture des processus, dans le [guide du constructeur](constructeur.md).
 
 - [1. Ce qu'il faut savoir avant de commencer](#1-ce-quil-faut-savoir-avant-de-commencer)
@@ -224,6 +226,9 @@ public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTaches
 
     public Task CompleterTacheAsync(long idTache, IReadOnlyDictionary<string, object?>? donnees, string? utilisateur, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Completee, ct);       // idempotent
+
+    public Task AssignerTacheAsync(long idTache, string utilisateur, CancellationToken ct)
+        => depot.AssignerAsync(idTache, utilisateur, ct);
 
     public Task AnnulerTacheAsync(long idTache, string motif, CancellationToken ct)
         => depot.ChangerStatutAsync(idTache, StatutTache.Annulee, ct);         // idempotent

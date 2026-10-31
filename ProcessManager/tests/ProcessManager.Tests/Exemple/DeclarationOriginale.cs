@@ -2,26 +2,6 @@ using ProcessManager;
 
 namespace ProcessManager.Tests.Exemple;
 
-public sealed class EtatDeclaration
-{
-    public Guid AggregateId { get; set; }
-    public int Relances { get; set; }
-    public string? Resultat { get; set; }
-}
-
-// Événements internes (décisions).
-public sealed record Identifiee;
-public sealed record RejetIdentification;
-public sealed record Validee;
-public sealed record RejetValidation;
-public sealed record Comptabilisee;
-public sealed record RejetComptabilisation;
-
-// Signaux des tâches utilisateur.
-public sealed record CorrectionSoumise;
-public sealed record RejetAutorise;
-public sealed record RejetRefuse;
-
 /// <summary>
 /// Identification (rejet → CorrectionIdentification) → Validation (rejet → CorrectionValidation)
 /// → AttenteComptabilisation (date fixe) → Comptabilisation (rejet → AutorisationRejet).

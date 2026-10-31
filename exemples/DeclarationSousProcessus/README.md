@@ -10,10 +10,11 @@ Le programme déroule une déclaration sur SQLite en mémoire en passant une foi
 
 | Fichier | Contenu |
 |---|---|
-| `Processus.cs` | Définitions du parent et des quatre sous-processus |
-| `Commandes.cs` | Commandes et requêtes : elles ne reçoivent que la clé d'affaire |
-| `Services.cs` | Interfaces des services métier et état de la déclaration |
-| `Simulation.cs` | Services simulés, horloge déplaçable, gestionnaire de tâches en mémoire (démonstration seulement) |
+| `TraitementDeclaration.cs`, `IdentificationDeclaration.cs`, `ConformiteDeclaration.cs`, `VerificationDeclaration.cs`, `ComptabilisationDeclaration.cs` | Définitions du parent et des quatre sous-processus |
+| `IdentifierDeclaration.cs`, `ValiderConformite.cs`, `EtablirCriteresSelection.cs`, `Comptabiliser.cs` | Commandes : elles ne reçoivent que la clé d'affaire |
+| `RequeteEtatDeclaration.cs`, `EstIdentifiee.cs`, `EstConforme.cs`, `CorrectionConformiteAutorisee.cs`, `EstRejeteeComptabilite.cs` | Requêtes, en lecture seule |
+| `I*.cs`, `Declaration.cs`, `EtatDeclaration.cs` | Interfaces des services métier et état de la déclaration |
+| `Simulateur.cs`, `HorlogeSimulee.cs`, `GestionnaireTachesMemoire.cs`, `Journal.cs` | Services simulés, horloge déplaçable, gestionnaire de tâches en mémoire (démonstration seulement) |
 | `Programme.cs` | Scénario de démonstration |
 
 ## Démarrage
