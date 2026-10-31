@@ -47,19 +47,6 @@ public sealed class ValeurTypee
     public object? VersObjet(string nom = "valeur") => ConvertisseurValeurs.DepuisJson(Type, Valeur, nom);
 }
 
-/// <summary>Variable typée non générique, telle que manipulée par le constructeur.</summary>
-public interface IVariable
-{
-    /// <summary>Nom de la variable.</summary>
-    string Nom { get; }
-
-    /// <summary>Type déclaré.</summary>
-    TypeVariable Type { get; }
-
-    /// <summary>Retourne la déclaration sérialisable de la variable.</summary>
-    DeclarationVariable VersDeclaration();
-}
-
 /// <summary>
 /// Variable typée, déclarée une fois comme constante dans la classe du processus et réutilisée
 /// partout (paramètres, mappages, lecture et écriture dans les commandes).

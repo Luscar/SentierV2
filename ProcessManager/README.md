@@ -9,7 +9,7 @@ src/ProcessManager/
   Handlers.cs          résolution des Handle par réflexion (cache par couple processus/événement)
   InstanceProcessus.cs instance persistée + statuts
   Evenements.cs        DelaiExpire, AttenteAbandonnee, SousProcessusTermine, ProcessusException
-  Ports.cs             IHorloge, IUniteDeTravail, IFabriqueProcessus, IStoreInstances
+  I*.cs                ports : IHorloge (+ HorlogeSysteme), IUniteDeTravail, IFabriqueProcessus, IStoreInstances
 tests/ProcessManager.Tests/
   Exemple/             DeclarationOriginale (plusieurs tâches/attentes) + sous-processus Signature
   Infrastructure/      store transactionnel en mémoire, horloge, fabrique

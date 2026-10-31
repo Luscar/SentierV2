@@ -1,29 +1,5 @@
 namespace ProcessManager;
 
-/// <summary>Heure courante, injectable pour tester les délais.</summary>
-public interface IHorloge
-{
-    DateTimeOffset Maintenant { get; }
-}
-
-/// <summary>Horloge système par défaut.</summary>
-public sealed class HorlogeSysteme : IHorloge
-{
-    public DateTimeOffset Maintenant => DateTimeOffset.UtcNow;
-}
-
-/// <summary>Transaction applicative. Le moteur ne commit qu'aux points de suspension.</summary>
-public interface IUniteDeTravail
-{
-    Task Commit(CancellationToken ct = default);
-}
-
-/// <summary>Crée un processus à partir de son type (typiquement via le conteneur DI).</summary>
-public interface IFabriqueProcessus
-{
-    ProcessusBase Creer(Type typeProcessus);
-}
-
 /// <summary>Persistance des instances, dans la transaction de l'unité de travail.</summary>
 public interface IStoreInstances
 {

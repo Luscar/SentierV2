@@ -3,26 +3,6 @@ using Sentier.Variables;
 
 namespace Sentier.Commandes;
 
-/// <summary>
-/// Commande métier exécutée par un nœud. Enregistrée en Scoped par balayage d'assemblys ;
-/// elle peut injecter ses propres services et travaille dans la transaction du moteur.
-/// </summary>
-public interface ICommandeSentier
-{
-    /// <summary>Exécute la commande.</summary>
-    Task ExecuterAsync(ContexteCommande contexte, CancellationToken ct);
-}
-
-/// <summary>
-/// Requête booléenne en lecture seule, évaluée par une branche de nœud de décision.
-/// Même enregistrement que les commandes.
-/// </summary>
-public interface IRequeteSentier
-{
-    /// <summary>Évalue la requête.</summary>
-    Task<bool> EvaluerAsync(ContexteRequete contexte, CancellationToken ct);
-}
-
 /// <summary>Fixe le nom d'une commande. Sans attribut, le nom est celui de la classe.</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class CommandeSentierAttribute : Attribute
@@ -67,20 +47,6 @@ public abstract class RequeteSentier<TParametres> : IRequeteSentier where TParam
 
     /// <summary>Évalue la requête avec ses paramètres typés.</summary>
     protected abstract Task<bool> EvaluerAsync(ContexteRequete contexte, TParametres parametres, CancellationToken ct);
-}
-
-/// <summary>Optionnel : code exécuté autour de chaque commande (journalisation, audit).</summary>
-public interface IIntercepteurCommande
-{
-    /// <summary>Intercepte l'exécution ; appeler <paramref name="suivant"/> pour exécuter la commande.</summary>
-    Task ExecuterAsync(string nomCommande, ContexteCommande contexte, Func<Task> suivant, CancellationToken ct);
-}
-
-/// <summary>Optionnel : code exécuté autour de chaque requête.</summary>
-public interface IIntercepteurRequete
-{
-    /// <summary>Intercepte l'évaluation ; appeler <paramref name="suivant"/> pour évaluer la requête.</summary>
-    Task<bool> EvaluerAsync(string nomRequete, ContexteRequete contexte, Func<Task<bool>> suivant, CancellationToken ct);
 }
 
 /// <summary>Contexte reçu par une commande.</summary>

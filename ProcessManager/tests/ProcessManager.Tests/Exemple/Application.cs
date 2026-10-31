@@ -2,16 +2,6 @@ namespace ProcessManager.Tests.Exemple;
 
 // Bus applicatifs simulés : le moteur ne les connaît pas, seuls les processus les utilisent.
 
-public interface IBusCommandes
-{
-    Task Envoyer(object commande);
-}
-
-public interface IBusQueries
-{
-    Task<TResultat> Demander<TResultat>(object query);
-}
-
 public sealed class BusCommandesTest : IBusCommandes
 {
     public List<object> Envoyees { get; } = [];
