@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace ProcessManager;
 
 /// <summary>
@@ -69,22 +67,3 @@ public abstract class ProcessusBase
 
     internal virtual void RestaurerEtat(string? json) { }
 }
-
-/// <summary>Processus portant un état typé, sérialisé en JSON dans l'instance.</summary>
-public abstract class Processus<TEtat> : ProcessusBase where TEtat : new()
-{
-    protected TEtat Etat { get; private set; } = new();
-
-    internal override string? SerialiserEtat() => JsonSerializer.Serialize(Etat);
-
-    internal override void RestaurerEtat(string? json) =>
-        Etat = string.IsNullOrEmpty(json) ? new() : JsonSerializer.Deserialize<TEtat>(json) ?? new();
-}
-
-internal abstract record Suite(string Description);
-
-internal sealed record Suspension(string Etape, TimeSpan? Delai, DateTimeOffset? Echeance) : Suite($"attente '{Etape}'");
-
-internal sealed record Appel(string Etape, Type Type, Func<ProcessusBase, Task> Demarrer) : Suite($"appel de '{Type.Name}' à l'étape '{Etape}'");
-
-internal sealed record Fin(string? Resultat) : Suite("fin");

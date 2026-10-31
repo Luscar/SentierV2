@@ -1,13 +1,5 @@
 namespace ProcessManager;
 
-public enum StatutProcessus
-{
-    EnCours,
-    EnAttente,
-    AttenteEnfant,
-    Termine,
-}
-
 /// <summary>Seule donnée persistée d'un processus.</summary>
 public sealed record InstanceProcessus
 {
