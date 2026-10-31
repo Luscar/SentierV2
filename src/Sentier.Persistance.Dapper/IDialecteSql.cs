@@ -12,7 +12,7 @@ public interface IDialecteSql
     string Parametre(string nom);
 
     /// <summary>Obtient l'identifiant suivant d'une séquence, avant l'insertion.</summary>
-    Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct);
+    Task<long> ProchainIdentifiantAsync(IExecuteurSqlSentier executeur, NomsObjets noms, string nomSequence, CancellationToken ct);
 
     /// <summary>Limite une requête ordonnée à ses <paramref name="taille"/> premières lignes.</summary>
     string Limiter(string sql, int taille);

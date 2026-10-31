@@ -1,5 +1,3 @@
-using System.Data;
-using Dapper;
 using Sentier.Persistance.Dapper;
 
 namespace Sentier.Persistance.Sqlite;
@@ -27,20 +25,18 @@ public sealed class DialecteSqlite : DialecteSqlBase
     public override string Parametre(string nom) => "@" + nom;
 
     /// <inheritdoc />
-    public override async Task<long> ProchainIdentifiantAsync(IDbConnection connexion, IDbTransaction? transaction, NomsObjets noms, string nomSequence, CancellationToken ct)
+    public override async Task<long> ProchainIdentifiantAsync(IExecuteurSqlSentier executeur, NomsObjets noms, string nomSequence, CancellationToken ct)
     {
         var table = noms.TableSequences;
-        var lignes = await connexion.ExecuteAsync(new CommandDefinition(
-            $"UPDATE {table} SET VAL_SEQ = VAL_SEQ + 1 WHERE NOM_SEQ = @nom", new { nom = nomSequence }, transaction, cancellationToken: ct));
+        var parametres = new { nom = nomSequence };
+        var lignes = await executeur.ExecuterAsync($"UPDATE {table} SET VAL_SEQ = VAL_SEQ + 1 WHERE NOM_SEQ = @nom", parametres, ct);
         if (lignes == 0)
         {
-            await connexion.ExecuteAsync(new CommandDefinition(
-                $"INSERT INTO {table} (NOM_SEQ, VAL_SEQ) VALUES (@nom, 1)", new { nom = nomSequence }, transaction, cancellationToken: ct));
+            await executeur.ExecuterAsync($"INSERT INTO {table} (NOM_SEQ, VAL_SEQ) VALUES (@nom, 1)", parametres, ct);
             return 1;
         }
 
-        return await connexion.ExecuteScalarAsync<long>(new CommandDefinition(
-            $"SELECT VAL_SEQ FROM {table} WHERE NOM_SEQ = @nom", new { nom = nomSequence }, transaction, cancellationToken: ct));
+        return await executeur.ExecuterScalaireAsync<long>($"SELECT VAL_SEQ FROM {table} WHERE NOM_SEQ = @nom", parametres, ct);
     }
 
     /// <inheritdoc />

@@ -30,6 +30,9 @@ public sealed partial class OptionsSentier
     /// <summary>Implémentation de <see cref="ISessionSentier"/> à enregistrer (Scoped) à la place de celle par défaut.</summary>
     public Type? TypeSession { get; private set; }
 
+    /// <summary>Exécuteur SQL du client (<see cref="UtiliserExecuteurSql{T}"/>), sinon Dapper sur l'<see cref="System.Data.IDbConnection"/> de la portée.</summary>
+    public Type? TypeExecuteurSql { get; private set; }
+
     /// <summary>Utilise le dialecte Oracle.</summary>
     public OptionsSentier UtiliserOracle()
     {
@@ -83,6 +86,17 @@ public sealed partial class OptionsSentier
     public OptionsSentier UtiliserSession<T>() where T : class, ISessionSentier
     {
         TypeSession = typeof(T);
+        return this;
+    }
+
+    /// <summary>
+    /// Fait exécuter les requêtes de Sentier par la couche d'accès aux données du client (adaptateur vers son
+    /// propre wrapper Dapper, par exemple) au lieu de Dapper sur l'<see cref="System.Data.IDbConnection"/> de la portée.
+    /// Le client n'a alors plus à enregistrer d'<see cref="System.Data.IDbConnection"/> pour Sentier.
+    /// </summary>
+    public OptionsSentier UtiliserExecuteurSql<T>() where T : class, IExecuteurSqlSentier
+    {
+        TypeExecuteurSql = typeof(T);
         return this;
     }
 

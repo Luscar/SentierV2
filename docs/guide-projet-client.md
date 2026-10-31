@@ -140,6 +140,9 @@ public sealed class UniteTravailSentier(ILifetimeScope container, IFabriqueConne
   un `TransactionScope`) : enregistrer aussi `b.RegisterInstance(transaction).As<IDbTransaction>().ExternallyOwned();`
   et appeler `transaction.Commit()` ; avec `Microsoft.Extensions.DependencyInjection`,
   `scope.ServiceProvider.GetRequiredService<IAccesseurTransactionSentier>().Transaction = transaction;`.
+- **Wrapper maison autour de Dapper** (ex. `IAccesBDPlus`) : un adaptateur `IExecuteurSqlSentier` et
+  `o.UtiliserExecuteurSql<T>()` font passer les requêtes de Sentier par ce wrapper ; plus aucune `IDbConnection` à
+  enregistrer (voir [integration-client.md](integration-client.md), § 3.2).
 - Toute écriture sans transaction (ni `TransactionScope`, ni `IDbTransaction`) lève `TransactionRequiseException`.
   Les lectures (`ISuiviSentier`) acceptent l'absence de transaction.
 

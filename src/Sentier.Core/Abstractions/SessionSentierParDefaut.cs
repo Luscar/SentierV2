@@ -23,7 +23,7 @@ public sealed class SessionSentierParDefaut : ISessionSentier
 
     /// <inheritdoc />
     public IDbConnection Connexion => _services.GetService<IDbConnection>()
-        ?? throw new SentierException("Aucune IDbConnection n'est enregistrée dans l'injection de dépendances du client.");
+        ?? throw new SentierException("Aucune IDbConnection n'est enregistrée dans l'injection de dépendances du client (ou, pour passer par sa propre couche d'accès aux données, UtiliserExecuteurSql<T>()).");
 
     /// <inheritdoc />
     public IDbTransaction? Transaction => _accesseur.Transaction ?? _services.GetService<IDbTransaction>();

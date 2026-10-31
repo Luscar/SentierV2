@@ -1,4 +1,3 @@
-using Dapper;
 using static Sentier.Persistance.Dapper.ContexteSql;
 
 namespace Sentier.Persistance.Dapper.Depots;
@@ -13,7 +12,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
     public async Task InsererAsync(Attente attente, CancellationToken ct)
     {
         attente.Id = new IdAttente(await sql.ProchainIdAsync(sql.Noms.SeqAttente, ct));
-        await sql.Connexion.ExecuteAsync(sql.Ecriture(
+        await sql.ExecuterAsync(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @idInstance, @codeNoeud, @type, @nomSortie, @dateEcheance, @nomSignal, @cleCorrelation, @dateCreation)",
             new
             {
@@ -27,7 +26,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
                 cleCorrelation = attente.CleCorrelation,
                 dateCreation = attente.DateCreation,
             },
-            ct));
+            ct);
     }
 
     public Task<IReadOnlyList<Attente>> ObtenirParInstanceAsync(IdInstance idInstance, CancellationToken ct)
@@ -36,18 +35,18 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
     public async Task<Attente?> VerrouillerAsync(IdAttente id, CancellationToken ct)
     {
         var requete = $"SELECT {Colonnes} FROM {Table} WHERE NO_SEQ_ATTEN_PROCS = @id{sql.Dialecte.VerrouillageSansAttente}";
-        var ligne = await sql.Connexion.QueryFirstOrDefaultAsync<Ligne>(sql.Ecriture(requete, new { id = id.Valeur }, ct));
+        var ligne = await sql.VerrouillerPremierAsync<Ligne>(requete, new { id = id.Valeur }, ct);
         return ligne?.VersDomaine();
     }
 
     public Task<int> SupprimerParNoeudAsync(IdInstance idInstance, string codeNoeud, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture(
+        => sql.ExecuterAsync(
             $"DELETE FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id AND ID_NOEUD = @code",
             new { id = idInstance.Valeur, code = codeNoeud },
-            ct));
+            ct);
 
     public Task<int> SupprimerParInstanceAsync(IdInstance idInstance, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture($"DELETE FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = idInstance.Valeur }, ct));
+        => sql.ExecuterAsync($"DELETE FROM {Table} WHERE NO_SEQ_INSTC_PROCS = @id", new { id = idInstance.Valeur }, ct);
 
     public async Task<IReadOnlyList<EcheanceDue>> ObtenirEcheancesDuesAsync(DateTime maintenant, int tailleMax, CancellationToken ct)
     {
@@ -57,7 +56,7 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
             "WHERE a.TYP_DECLN = 'ECHEANCE' AND a.DH_ECHEA <= @maintenant AND i.STAT = 'SUSPENDUE' " +
             "ORDER BY a.DH_ECHEA, a.NO_SEQ_ATTEN_PROCS",
             tailleMax);
-        var lignes = await sql.Connexion.QueryAsync<LigneEcheance>(sql.Lecture(requete, new { maintenant }, ct));
+        var lignes = await sql.LireAsync<LigneEcheance>(requete, new { maintenant }, ct);
         return lignes.Select(l => new EcheanceDue(new IdAttente(l.ID_ATTENTE), new IdInstance(l.NO_SEQ_INSTC_PROCS), l.CLE_DEFIN, l.AGGRE_ID, Utc(l.DH_ECHEA))).ToList();
     }
 
@@ -84,13 +83,13 @@ internal sealed class DepotAttentesDapper(ContexteSql sql) : IDepotAttentes
     }
 
     public Task RenommerNoeudAsync(IdInstance idInstance, string ancienCode, string nouveauCode, CancellationToken ct)
-        => sql.Connexion.ExecuteAsync(sql.Ecriture(
+        => sql.ExecuterAsync(
             $"UPDATE {Table} SET ID_NOEUD = @nouveau WHERE NO_SEQ_INSTC_PROCS = @id AND ID_NOEUD = @ancien",
             new { id = idInstance.Valeur, ancien = ancienCode, nouveau = nouveauCode },
-            ct));
+            ct);
 
     private async Task<IReadOnlyList<Attente>> ListerAsync(string requete, object parametres, CancellationToken ct)
-        => (await sql.Connexion.QueryAsync<Ligne>(sql.Lecture(requete, parametres, ct))).Select(l => l.VersDomaine()).ToList();
+        => (await sql.LireAsync<Ligne>(requete, parametres, ct)).Select(l => l.VersDomaine()).ToList();
 
     private sealed class LigneEcheance
     {

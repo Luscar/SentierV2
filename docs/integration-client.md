@@ -8,7 +8,8 @@ Le pas-à-pas complet est dans le [guide de démarrage](demarrage.md) ; les règ
 
 | Contrat | Quand | Trouvé par | Durée de vie |
 |---|---|---|---|
-| `IDbConnection` (enregistrement) | **Toujours** | Enregistrée par le client | Portée |
+| `IDbConnection` (enregistrement) | **Toujours**, sauf avec un exécuteur SQL du client (§ 3.2) | Enregistrée par le client | Portée |
+| `IExecuteurSqlSentier` | Optionnel : faire passer les requêtes de Sentier par la couche d'accès aux données du client (§ 3.2) | `UtiliserExecuteurSql<T>()` | Portée |
 | Transaction (écritures) : **au choix** un `TransactionScope` autour de la connexion (Oracle, aucune `IDbTransaction` à fournir), ou une `IDbTransaction` (enregistrée, ou via `IAccesseurTransactionSentier` / `ISessionSentier`) | **Toujours** (écritures) | Ouverte par le client | Portée |
 | `DefinitionSentier` + `[ProcessusSentier]` | **Toujours** : un par processus | Balayage | — |
 | `ICommandeSentier` / `CommandeSentier<T>` | Nœuds `Systemique`, commandes d'entrée et de sortie, calcul de migration | Balayage | Portée |
@@ -151,7 +152,63 @@ public sealed class MaSession(UniteDeTravail uow) : ISessionSentier
 
 Enregistrement : `o.UtiliserSession<MaSession>()`.
 
-### 3.2 Définitions de processus
+### 3.2 Passer par sa propre couche d'accès aux données — `IExecuteurSqlSentier`
+
+Par défaut, Sentier exécute ses requêtes avec Dapper sur l'`IDbConnection` de la portée. Une application qui fait
+tous ses appels par un wrapper maison autour de Dapper (par exemple `IAccesBDPlus`, qui regroupe
+`IAccesBDEcriturePlus` et `IAccesBDLecturePlus`) peut y faire passer Sentier aussi. Il suffit d'un adaptateur de quatre méthodes :
+
+```csharp
+public sealed class ExecuteurSqlAccesBDPlus(IAccesBDPlus accesBD) : IExecuteurSqlSentier
+{
+    public Task<int> ExecuterAsync(string sql, object? parametres, CancellationToken ct)
+        => accesBD.ExecuteNonQueryAsync(sql, parametres, ct);
+
+    public Task<T?> ExecuterScalaireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.ExecuteScalarAsync<T>(sql, parametres, ct);
+
+    public Task<IEnumerable<T>> LireAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.QueryAsync<T>(sql, parametres, ct);
+
+    public Task<T?> LirePremierOuDefautAsync<T>(string sql, object? parametres, CancellationToken ct)
+        => accesBD.QueryFirstOrDefaultAsync<T>(sql, parametres, ct);
+}
+```
+
+Enregistrement (Autofac ou `Microsoft.Extensions.DependencyInjection`, même option) :
+
+```csharp
+builder.RegisterModule(new ModuleSentier(o => o
+    .UtiliserOracle("SENTIER")
+    .BalayerAssemblyDe<Program>()
+    .UtiliserExecuteurSql<ExecuteurSqlAccesBDPlus>()));
+```
+
+L'unité de travail n'enregistre alors **plus rien pour Sentier** : ni `IDbConnection`, ni `IDbTransaction`.
+`IAccesBDPlus` reste résolu comme d'habitude dans la portée, et le `TransactionScope` rend l'ensemble atomique :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+await using var scope = container.BeginLifetimeScope();
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+Ce que l'adaptateur reçoit et doit respecter :
+
+- **Le SQL est déjà dans la syntaxe du dialecte** : paramètres `:nom` sous Oracle, `@nom` sous SQLite.
+- **Les paramètres sont des objets Dapper** : objets anonymes, `DynamicParameters`, et listes développées par Dapper
+  (`STAT IN :statuts`). Le wrapper doit les transmettre tels quels à Dapper.
+- **Les lignes sont mappées par nom de colonne** (`QueryAsync<T>` de Dapper).
+- **Même connexion, même transaction** que le reste de l'unité de travail : avec un `TransactionScope`, la connexion
+  du wrapper est ouverte dans la portée. Sentier vérifie avant d'écrire qu'un `TransactionScope` est actif ; si le
+  wrapper travaille plutôt avec sa propre `IDbTransaction`, la donner aussi à Sentier par `IAccesseurTransactionSentier`.
+- `GetSequenceAsync` n'est pas nécessaire : Sentier lit ses séquences par `ExecuterScalaireAsync<long>`
+  (`SELECT … .NEXTVAL FROM DUAL`).
+- `InstallateurSchemaSentier` passe aussi par l'exécuteur.
+
+### 3.3 Définitions de processus
 
 Une classe par processus, dérivée de `DefinitionSentier`, avec la clé du processus :
 
@@ -318,6 +375,7 @@ Utilisation : `SimulerMigrationAsync` (rapport, rien n'est écrit), puis `Migrer
 | `IIntercepteurRequeteSentier` | `Task<bool> EvaluerAsync(string nomRequete, ContexteRequeteSentier contexte, Func<Task<bool>> suivant, ct)` | Code autour de chaque requête ; retourner le résultat de `suivant()` |
 | `ISerialiseurVariablesSentier` | `string Serialiser(valeurs)` ; `Dictionary<string, object?> Deserialiser(json, types)` | Remplacer le stockage JSON des variables |
 | `ISessionSentier` | `IDbConnection Connexion` ; `IDbTransaction? Transaction` | Session sur mesure (§ 3.1), par `UtiliserSession<T>()` |
+| `IExecuteurSqlSentier` | `ExecuterAsync` ; `ExecuterScalaireAsync<T>` ; `LireAsync<T>` ; `LirePremierOuDefautAsync<T>` | Couche d'accès aux données du client (§ 3.2), par `UtiliserExecuteurSql<T>()` |
 
 Plusieurs intercepteurs peuvent être enregistrés : ils s'enchaînent dans l'ordre d'enregistrement.
 

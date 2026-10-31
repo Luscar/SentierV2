@@ -118,6 +118,8 @@ Dans une application web, ce code va dans un middleware ou une fabrique qui cré
 
 Pour brancher Sentier sur une unité de travail existante, fournir sa propre implémentation : `o.UtiliserSession<MaSession>()`.
 
+**Couche d'accès aux données du client.** Si l'application passe par un wrapper maison autour de Dapper, Sentier peut l'utiliser aussi : implémenter `IExecuteurSqlSentier` (quatre méthodes : `ExecuterAsync`, `ExecuterScalaireAsync<T>`, `LireAsync<T>`, `LirePremierOuDefautAsync<T>`) en déléguant au wrapper, puis `o.UtiliserExecuteurSql<MonAdaptateur>()`. Sentier n'a alors plus besoin d'`IDbConnection` dans la portée. Le SQL arrive dans la syntaxe du dialecte et les paramètres sont des objets Dapper, à transmettre tels quels. Exemple complet : [docs/integration-client.md](docs/integration-client.md), § 3.2.
+
 Les actions qui écrivent lèvent `TransactionRequiseException` sans transaction active (ni `IDbTransaction`, ni `TransactionScope`). Une exception (commande, requête, conflit…) est **propagée** : c'est le client qui annule sa transaction.
 
 ## 3. Écrire un processus
