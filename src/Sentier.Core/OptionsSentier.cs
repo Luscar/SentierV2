@@ -92,7 +92,8 @@ public sealed partial class OptionsSentier
     /// <summary>
     /// Fait exécuter les requêtes de Sentier par la couche d'accès aux données du client (adaptateur vers son
     /// propre wrapper Dapper, par exemple) au lieu de Dapper sur l'<see cref="System.Data.IDbConnection"/> de la portée.
-    /// Le client n'a alors plus à enregistrer d'<see cref="System.Data.IDbConnection"/> pour Sentier.
+    /// Le client n'a alors plus à enregistrer d'<see cref="System.Data.IDbConnection"/> ni d'<see cref="System.Data.IDbTransaction"/>
+    /// pour Sentier : la transaction est le <see cref="System.Transactions.TransactionScope"/> du client.
     /// </summary>
     public OptionsSentier UtiliserExecuteurSql<T>() where T : class, IExecuteurSqlSentier
     {

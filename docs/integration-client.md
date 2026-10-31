@@ -184,7 +184,8 @@ builder.RegisterModule(new ModuleSentier(o => o
     .UtiliserExecuteurSql<ExecuteurSqlAccesBDPlus>()));
 ```
 
-L'unité de travail n'enregistre alors **plus rien pour Sentier** : ni `IDbConnection`, ni `IDbTransaction`.
+L'unité de travail n'enregistre alors **plus rien pour Sentier** : ni `IDbConnection`, ni `IDbTransaction` (inutile : le
+wrapper passe `transaction: null`).
 `IAccesBDPlus` reste résolu comme d'habitude dans la portée, et le `TransactionScope` rend l'ensemble atomique :
 
 ```csharp
@@ -201,9 +202,10 @@ Ce que l'adaptateur reçoit et doit respecter :
 - **Les paramètres sont des objets Dapper** : objets anonymes, `DynamicParameters`, et listes développées par Dapper
   (`STAT IN :statuts`). Le wrapper doit les transmettre tels quels à Dapper.
 - **Les lignes sont mappées par nom de colonne** (`QueryAsync<T>` de Dapper).
-- **Même connexion, même transaction** que le reste de l'unité de travail : avec un `TransactionScope`, la connexion
-  du wrapper est ouverte dans la portée. Sentier vérifie avant d'écrire qu'un `TransactionScope` est actif ; si le
-  wrapper travaille plutôt avec sa propre `IDbTransaction`, la donner aussi à Sentier par `IAccesseurTransactionSentier`.
+- **Aucune `IDbTransaction`** : l'interface ne transporte pas de transaction, le wrapper appelle Dapper avec
+  `transaction: null`. Le `TransactionScope` est la seule transaction : la connexion du wrapper doit être ouverte
+  **dans** la portée pour y être enrôlée. Sentier vérifie avant d'écrire qu'un `TransactionScope` est actif
+  (sinon `TransactionRequiseException`).
 - `GetSequenceAsync` n'est pas nécessaire : Sentier lit ses séquences par `ExecuterScalaireAsync<long>`
   (`SELECT … .NEXTVAL FROM DUAL`).
 - `InstallateurSchemaSentier` passe aussi par l'exécuteur.
