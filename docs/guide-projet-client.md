@@ -492,7 +492,7 @@ chemin principal dans la suite du déroulement, exceptions dans les branches ; �
 
 - [ ] Tables créées avec le bon préfixe (script DBA, ou `InstallerAsync` en test).
 - [ ] `ModuleSentier` / `AddSentier` avec le même préfixe et `BalayerAssemblyDe<…>()` pour chaque assembly concerné.
-- [ ] Une unité de travail qui enregistre l'`IDbConnection` (`ExternallyOwned`), ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, et valide.
+- [ ] Une unité de travail qui enregistre l'`IDbConnection` (`ExternallyOwned`), ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, et valide — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` (`UtiliserExecuteurSql<T>()`) et un `TransactionScope`.
 - [ ] Une `DefinitionSentier` par processus, clé fixée par `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.
 - [ ] `IGestionnaireTachesSentier` si un nœud interactif existe : lit `demande.Assigne`, même transaction, complétion et annulation idempotentes.
@@ -506,7 +506,7 @@ chemin principal dans la suite du déroulement, exceptions dans les branches ; �
 | Symptôme | Cause | Correction |
 |---|---|---|
 | `TransactionRequiseException` | Ni `TransactionScope` actif ni `IDbTransaction`, ou transaction déjà validée ; ou `TransactionScope` avec SQLite. | Oracle : ouvrir la connexion dans un `TransactionScope`. Sinon : enregistrer une `IDbTransaction` (ou alimenter `IAccesseurTransactionSentier`) avant l'appel. |
-| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine. | Résoudre depuis la portée de l'unité de travail. |
+| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine, ou application qui passe par son propre wrapper. | Résoudre depuis la portée de l'unité de travail ; avec un wrapper maison, `UtiliserExecuteurSql<T>()`. |
 | Connexion disposée à la fin de la portée | Enregistrée sans `ExternallyOwned()`. | Ajouter `ExternallyOwned()`. |
 | `DefinitionInvalideException` à la construction | Définition incohérente. | Lire la liste complète des erreurs de l'exception. |
 | Déploiement refusé : commande ou requête non enregistrée | Classe hors des assemblys balayés, ou renommée alors qu'une ancienne version l'utilise. | `BalayerAssemblyDe<…>()`, ou `[CommandeSentier("AncienNom")]` / `[RequeteSentier("AncienNom")]`. |

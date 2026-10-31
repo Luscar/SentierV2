@@ -159,6 +159,24 @@ transaction.Commit();
 
 Avec `Microsoft.Extensions.DependencyInjection`, alimenter plutôt `IAccesseurTransactionSentier` dans la portée (voir le README, § 2).
 
+### Variante : wrapper maison autour de Dapper
+
+Si l'application fait tous ses appels par sa propre couche d'accès aux données (par exemple `IAccesBDPlus`, qui
+appelle Dapper avec `transaction: null`), Sentier peut passer par elle : un adaptateur `IExecuteurSqlSentier` de
+quatre méthodes, enregistré par `o.UtiliserExecuteurSql<T>()`. L'unité de travail n'enregistre alors **ni
+`IDbConnection` ni `IDbTransaction`** ; seul le `TransactionScope` porte la transaction :
+
+```csharp
+using var portee = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+await using var scope = container.BeginLifetimeScope();          // IAccesBDPlus est résolu comme d'habitude
+
+await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire: 42);
+portee.Complete();
+```
+
+L'adaptateur et ses règles (SQL déjà en syntaxe Oracle, paramètres Dapper à transmettre tels quels, connexion ouverte
+dans le `TransactionScope`) sont dans [integration-client.md](integration-client.md), § 3.2.
+
 ## 6. Écrire un premier processus
 
 Une classe par processus. La clé (`"demande-conge"`) est celle utilisée pour démarrer une instance.
@@ -366,7 +384,7 @@ Les dates SQLite sont stockées en texte et les clés étrangères ne sont véri
 
 - [ ] Tables créées avec le bon préfixe (script DBA ou `InstallerAsync`).
 - [ ] `ModuleSentier` (ou `AddSentier`) enregistré avec le même préfixe et les bons assemblys.
-- [ ] Une unité de travail qui enregistre l'`IDbConnection` dans la portée, ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, puis valide.
+- [ ] Une unité de travail qui enregistre l'`IDbConnection` dans la portée, ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, puis valide — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` (`UtiliserExecuteurSql<T>()`) et un `TransactionScope`.
 - [ ] Une classe `DefinitionSentier` par processus, avec `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.
 - [ ] `IGestionnaireTachesSentier` implémenté si un processus a un nœud interactif.
@@ -379,7 +397,7 @@ Les dates SQLite sont stockées en texte et les clés étrangères ne sont véri
 | Symptôme | Cause | Correction |
 |---|---|---|
 | `TransactionRequiseException` | Ni `TransactionScope` actif ni `IDbTransaction` dans la portée, ou transaction déjà validée ; ou `TransactionScope` avec SQLite. | Oracle : ouvrir la connexion dans un `TransactionScope` (`TransactionScopeAsyncFlowOption.Enabled`). Sinon : enregistrer une `IDbTransaction` (ou alimenter `IAccesseurTransactionSentier`) avant d'appeler le service. |
-| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine. | Résoudre `IServiceSentier` depuis la portée de l'unité de travail. |
+| « Aucune IDbConnection n'est enregistrée » | Service résolu depuis le conteneur racine, ou application qui passe par son propre wrapper. | Résoudre `IServiceSentier` depuis la portée de l'unité de travail ; avec un wrapper maison, `UtiliserExecuteurSql<T>()`. |
 | `DefinitionInvalideException` | Définition incohérente (code en double, nœud inatteignable, décision sans « sinon »…). | Lire la liste d'erreurs de l'exception. |
 | Le déploiement échoue sur une commande ou une requête inconnue | Classe hors des assemblys balayés. | Ajouter `BalayerAssemblyDe<UneClasseDeCetAssembly>()`. |
 | Le déploiement échoue sur un nœud interactif | Aucun `IGestionnaireTachesSentier`. | L'implémenter dans un assembly balayé, ou `UtiliserGestionnaireTaches<T>()`. |

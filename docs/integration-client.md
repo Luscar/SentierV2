@@ -403,7 +403,7 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 ## 7. Liste de contrôle
 
 - [ ] `ModuleSentier` (ou `AddSentier`) avec préfixe, dialecte et `BalayerAssemblyDe<T>()` pour chaque assembly concerné.
-- [ ] Une portée par unité de travail, avec l'`IDbConnection` ouverte dans un `TransactionScope` (Oracle), ou avec une `IDbTransaction` (§ 2, § 3.1).
+- [ ] Une portée par unité de travail, avec l'`IDbConnection` ouverte dans un `TransactionScope` (Oracle), ou avec une `IDbTransaction` (§ 2, § 3.1) — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` et un `TransactionScope`, sans `IDbConnection` ni `IDbTransaction` (§ 3.2).
 - [ ] Une `DefinitionSentier` + `[ProcessusSentier]` par processus ; `DeployerDefinitionsAsync()` au démarrage.
 - [ ] Une `ICommandeSentier` par commande référencée ; une `IRequeteSentier` par décision calculée.
 - [ ] `IGestionnaireTachesSentier` (7 méthodes) si un processus a un nœud interactif ; `CompleterTacheAsync` et `AnnulerTacheAsync` idempotentes.
