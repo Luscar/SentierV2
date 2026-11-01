@@ -18,7 +18,6 @@ Exemple complet d'un processus parent composé de sous-processus (corrections, a
 | `Sentier.Core` | Domaine, constructeur de définitions, moteur, abstractions. Aucune dépendance à une base. |
 | `Sentier.Persistance` | Dépôts Dapper, noms préfixés, dialectes Oracle et SQLite (`IDialecteSql`), scripts DDL, installateur de schéma. |
 | `Sentier.DependencyInjection` | Extension `AddSentier`. |
-| `Sentier.Autofac` | Module Autofac `ModuleSentier`. |
 
 ## 1. Enregistrement
 
@@ -35,21 +34,25 @@ services.AddSentier(o =>
 });
 ```
 
-Avec **Autofac** (`Sentier.Autofac`), le module enregistre les mêmes services :
+Avec **Autofac**, il n'y a pas de package dédié : `AddSentier` passe par `Autofac.Extensions.DependencyInjection`.
+Sous ASP.NET Core / Generic Host avec `AutofacServiceProviderFactory`, appeler simplement `services.AddSentier(...)`.
+Avec un `ContainerBuilder` seul :
 
 ```csharp
-var builder = new ContainerBuilder();
-
-builder.RegisterModule(new ModuleSentier(o => o
+var services = new ServiceCollection();
+services.AddSentier(o => o
     .UtiliserOracle("SENTIER")            // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<Program>()));      // définitions, commandes, requêtes, gestionnaire de tâches
+    .BalayerAssemblyDe<Program>());       // définitions, commandes, requêtes, gestionnaire de tâches
+
+var builder = new ContainerBuilder();
+builder.Populate(services);               // Autofac.Extensions.DependencyInjection
 
 _container = builder.Build();
 ```
 
-`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Avec Autofac, le gestionnaire de tâches vient du balayage ou de `UtiliserGestionnaireTaches<T>()`. Un service enregistré dans le `ContainerBuilder` **après** le module (`IHorlogeSentier`, `IContexteUtilisateurSentier`…) remplace celui de Sentier.
+`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Un service enregistré dans le `ContainerBuilder` **après** `Populate` (`IHorlogeSentier`, `IContexteUtilisateurSentier`…) remplace celui de Sentier.
 
-`AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateurSentier` (utilisateur courant, pour l'audit), `IIntercepteurCommandeSentier`, `IIntercepteurRequeteSentier`, et un `IHorlogeSentier` ou `ISerialiseurVariablesSentier` personnalisé.
+`AddSentier` n'enregistre **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateurSentier` (utilisateur courant, pour l'audit), `IIntercepteurCommandeSentier`, `IIntercepteurRequeteSentier`, et un `IHorlogeSentier` ou `ISerialiseurVariablesSentier` personnalisé.
 
 Le schéma peut être créé par `InstallateurSchemaSentier.InstallerAsync()` (pratique avec SQLite) ou remis à un DBA via `GenererScript()`. Les scripts sont aussi dans `src/Sentier.Persistance/Scripts/Oracle` et `src/Sentier.Persistance/Scripts/Sqlite`.
 
