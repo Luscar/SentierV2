@@ -1,6 +1,6 @@
-using static Sentier.Persistance.Dapper.ContexteSql;
+using static Sentier.Persistance.ContexteSql;
 
-namespace Sentier.Persistance.Dapper.Depots;
+namespace Sentier.Persistance.Depots;
 
 /// <summary>Dépôt Dapper des versions de définitions.</summary>
 internal sealed class DepotDefinitionsDapper(ContexteSql sql) : IDepotDefinitions

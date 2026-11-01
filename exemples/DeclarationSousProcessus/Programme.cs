@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Sentier;
 using Sentier.DependencyInjection;
-using Sentier.Persistance.Dapper;
+using Sentier.Persistance;
 
 // Démonstration : une déclaration traverse chaque sous-processus et chaque correction, sur SQLite en mémoire.
 

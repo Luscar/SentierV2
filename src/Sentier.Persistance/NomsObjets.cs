@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Composant unique qui centralise tous les noms d'objets de base de données (tables, vue, séquences),

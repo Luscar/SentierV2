@@ -2,7 +2,7 @@ using System.Data;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>Base commune des dialectes : lecture des scripts embarqués et découpage.</summary>
 public abstract partial class DialecteSqlBase : IDialecteSql

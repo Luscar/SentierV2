@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Sentier.DependencyInjection\Sentier.DependencyInjection.csproj" />
-    <ProjectReference Include="..\..\src\Sentier.Persistance.Sqlite\Sentier.Persistance.Sqlite.csproj" />
+    <ProjectReference Include="..\..\src\Sentier.Persistance\Sentier.Persistance.csproj" />
   </ItemGroup>
 
   <ItemGroup>

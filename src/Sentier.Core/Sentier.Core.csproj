@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Sentier.Persistance.Dapper" />
+    <InternalsVisibleTo Include="Sentier.Persistance" />
     <InternalsVisibleTo Include="Sentier.DependencyInjection" />
   </ItemGroup>
 

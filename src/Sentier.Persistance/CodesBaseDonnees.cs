@@ -1,4 +1,4 @@
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>Codes stockés en base pour les énumérations de Sentier.</summary>
 public static class CodesBaseDonnees

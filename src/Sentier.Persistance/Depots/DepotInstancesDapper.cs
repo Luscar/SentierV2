@@ -1,7 +1,7 @@
 using Dapper;
-using static Sentier.Persistance.Dapper.ContexteSql;
+using static Sentier.Persistance.ContexteSql;
 
-namespace Sentier.Persistance.Dapper.Depots;
+namespace Sentier.Persistance.Depots;
 
 /// <summary>Dépôt Dapper des instances, avec verrou optimiste sur la colonne VERSI.</summary>
 internal sealed class DepotInstancesDapper(ContexteSql sql) : IDepotInstances

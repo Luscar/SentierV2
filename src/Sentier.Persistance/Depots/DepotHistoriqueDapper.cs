@@ -1,6 +1,6 @@
-using static Sentier.Persistance.Dapper.ContexteSql;
+using static Sentier.Persistance.ContexteSql;
 
-namespace Sentier.Persistance.Dapper.Depots;
+namespace Sentier.Persistance.Depots;
 
 /// <summary>Dépôt Dapper de l'historique des passages.</summary>
 internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique

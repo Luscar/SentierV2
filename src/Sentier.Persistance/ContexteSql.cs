@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Data;
 using System.Text.RegularExpressions;
 
-namespace Sentier.Persistance.Dapper;
+namespace Sentier.Persistance;
 
 /// <summary>
 /// Accès commun des dépôts à l'exécuteur SQL, au dialecte et aux noms d'objets. Enregistré en Scoped.

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Sentier.Persistance</RootNamespace>
+    <PackageId>Sentier.Persistance</PackageId>
+    <Description>Sentier : dépôts Dapper, gestion du préfixe des objets, dialectes SQL (Oracle, SQLite) et scripts DDL.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.89" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sentier.Core\Sentier.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\Oracle\oracle.sql" LogicalName="Sentier.Persistance.Scripts.oracle.sql" />
+    <EmbeddedResource Include="Scripts\Sqlite\sqlite.sql" LogicalName="Sentier.Persistance.Scripts.sqlite.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sentier.DependencyInjection" />
+  </ItemGroup>
+
+</Project>
