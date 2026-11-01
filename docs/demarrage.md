@@ -33,8 +33,7 @@ Ce guide mène une application cliente de l'installation au premier processus ex
 
 | Package | Quand |
 |---|---|
-| `Sentier.Autofac` | Application sur **Autofac** (inclut `Sentier.DependencyInjection` et les dialectes). |
-| `Sentier.DependencyInjection` | Application sur `Microsoft.Extensions.DependencyInjection`. |
+| `Sentier.DependencyInjection` | Toute application (inclut les dialectes), y compris sur **Autofac**. |
 | `Microsoft.Data.Sqlite` | Projet de tests. |
 
 Le fournisseur Oracle (ODP.NET) est celui que l'application utilise déjà : Sentier ne travaille qu'avec `IDbConnection`.
@@ -57,29 +56,15 @@ Choisir un **préfixe** (lettres, chiffres, `_`, 12 caractères au plus) : toute
 
 ## 4. Enregistrer Sentier
 
-### Avec Autofac
-
-```csharp
-var builder = new ContainerBuilder();
-
-builder.RegisterModule(new ModuleSentier(o => o
-    .UtiliserOracle("SENTIER")              // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<Program>()));        // définitions, commandes, requêtes, gestionnaire de tâches
-
-// Services optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
-builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-
-_container = builder.Build();
-```
-
-### Avec Microsoft.Extensions.DependencyInjection
-
 ```csharp
 services.AddScoped<IDbConnection>(_ => OuvrirConnexionOracle());
 services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")
-    .BalayerAssemblyDe<Program>());
+    .UtiliserOracle("SENTIER")              // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
+    .BalayerAssemblyDe<Program>());         // définitions, commandes, requêtes, gestionnaire de tâches
+services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();   // optionnel
 ```
+
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
 
 ### Ce qui est découvert par balayage
 
@@ -348,8 +333,10 @@ Plusieurs batchs peuvent tourner en parallèle. Une instance en erreur se relanc
 Même code qu'en production, seul le dialecte change. Une base en mémoire partagée vit tant qu'une connexion reste ouverte :
 
 ```csharp
+var services = new ServiceCollection();
+services.AddSentier(o => o.UtiliserSqlite("SENTIER").BalayerAssemblyDe<DemandeConge>());
 var builder = new ContainerBuilder();
-builder.RegisterModule(new ModuleSentier(o => o.UtiliserSqlite("SENTIER").BalayerAssemblyDe<DemandeConge>()));
+builder.Populate(services);
 builder.RegisterType<TachesEnMemoire>().As<IGestionnaireTachesSentier>().InstancePerLifetimeScope();
 var container = builder.Build();
 
@@ -383,7 +370,7 @@ Les dates SQLite sont stockées en texte et les clés étrangères ne sont véri
 ## Liste de contrôle
 
 - [ ] Tables créées avec le bon préfixe (script DBA ou `InstallerAsync`).
-- [ ] `ModuleSentier` (ou `AddSentier`) enregistré avec le même préfixe et les bons assemblys.
+- [ ] `AddSentier` enregistré avec le même préfixe et les bons assemblys.
 - [ ] Une unité de travail qui enregistre l'`IDbConnection` dans la portée, ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, puis valide — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` (`UtiliserExecuteurSql<T>()`) et un `TransactionScope`.
 - [ ] Une classe `DefinitionSentier` par processus, avec `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.

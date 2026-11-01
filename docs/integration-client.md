@@ -26,27 +26,27 @@ par Sentier ; le client n'a rien à enregistrer pour eux.
 
 ## 2. Injection de dépendances
 
-### 2.1 Autofac
+### 2.1 Enregistrement
 
 ```csharp
-var builder = new ContainerBuilder();
-
-builder.RegisterModule(new ModuleSentier(o => o
+services.AddSentier(o => o
     .UtiliserOracle("SENTIER")                 // préfixe des tables (obligatoire) ; UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<Program>()));           // définitions, commandes, requêtes, plans de migration, gestionnaire de tâches
+    .BalayerAssemblyDe<Program>());            // définitions, commandes, requêtes, plans de migration, gestionnaire de tâches
     // .UtiliserGestionnaireTaches<MesTaches>()  // si le balayage ne suffit pas : plusieurs implémentations, ou classe hors des assemblys balayés
     // .UtiliserSession<MaSession>()             // seulement pour une session sur mesure (§ 3.1)
 
-// Optionnels, enregistrés APRÈS le module pour remplacer ceux de Sentier :
-builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalCommandes>().As<IIntercepteurCommandeSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalRequetes>().As<IIntercepteurRequeteSentier>().InstancePerLifetimeScope();
-builder.RegisterType<HorlogeMetier>().As<IHorlogeSentier>().SingleInstance();
-
-var container = builder.Build();
+// Optionnels : IHorlogeSentier et ISerialiseurVariablesSentier AVANT AddSentier (Sentier ne les ajoute que s'ils manquent),
+// les autres où l'on veut.
+services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();
+services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();
+services.AddScoped<IIntercepteurRequeteSentier, JournalRequetes>();
 ```
 
-Puis, **pour chaque unité de travail** (requête web, message, itération de batch), une portée qui porte la connexion
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
+
+### 2.2 Unité de travail avec Autofac
+
+**Pour chaque unité de travail** (requête web, message, itération de batch), une portée Autofac (`container` construit après `Populate`) qui porte la connexion
 du client. Avec une transaction ambiante (Oracle), **seule l'`IDbConnection` est enregistrée** :
 
 ```csharp
@@ -76,19 +76,9 @@ await scope.Resolve<IServiceSentier>().DemarrerAsync("demande-conge", cleAffaire
 transaction.Commit();                                                        // une exception : pas de commit
 ```
 
-### 2.2 Microsoft.Extensions.DependencyInjection
+### 2.3 Unité de travail avec Microsoft.Extensions.DependencyInjection
 
-```csharp
-services.AddScoped<IDbConnection>(_ => OuvrirConnexion());
-services.AddSentier(o => o.UtiliserOracle("SENTIER").BalayerAssemblyDe<Program>());
-
-// Optionnels : IHorlogeSentier et ISerialiseurVariablesSentier AVANT AddSentier (Sentier ne les ajoute que s'ils manquent),
-// les autres où l'on veut.
-services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();
-services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();
-```
-
-Par portée, avec une transaction ambiante (Oracle), il suffit d'ouvrir le `TransactionScope` **avant** de résoudre
+La connexion est enregistrée en Scoped : `services.AddScoped<IDbConnection>(_ => OuvrirConnexion());`. Par portée, avec une transaction ambiante (Oracle), il suffit d'ouvrir le `TransactionScope` **avant** de résoudre
 la connexion (la fabrique `OuvrirConnexion()` l'ouvre alors dans la portée) :
 
 ```csharp
@@ -111,7 +101,7 @@ await scope.ServiceProvider.GetRequiredService<IServiceSentier>().DemarrerAsync(
 transaction.Commit();
 ```
 
-### 2.3 Ce que Sentier n'enregistre jamais
+### 2.4 Ce que Sentier n'enregistre jamais
 
 - l'`IDbConnection` (et l'`IDbTransaction` s'il en utilise une) : elles appartiennent au client ;
 - `IContexteUtilisateurSentier`, les intercepteurs : à enregistrer par le client s'il en veut.
@@ -133,7 +123,7 @@ donc dans la même transaction.
 
 **Application sans `IDbTransaction` (Oracle).** Si l'application n'enregistre que l'`IDbConnection` (ses appels Dapper
 passent `transaction: null`) et rend ses écritures atomiques avec un `TransactionScope`, rien d'autre n'est à fournir :
-Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée (exemple au § 2.1).
+Sentier exécute alors ses requêtes avec `transaction: null` sur la connexion enrôlée (exemple au § 2.2).
 
 - La connexion doit être ouverte **à l'intérieur** de la portée ; `TransactionScopeAsyncFlowOption.Enabled` est nécessaire avec `async`.
 - **Oracle seulement** : Microsoft.Data.Sqlite ne s'enrôle pas dans un `TransactionScope`. Avec SQLite, Sentier refuse
@@ -175,13 +165,13 @@ public sealed class ExecuteurSqlAccesBDPlus(IAccesBDPlus accesBD) : IExecuteurSq
 }
 ```
 
-Enregistrement (Autofac ou `Microsoft.Extensions.DependencyInjection`, même option) :
+Enregistrement :
 
 ```csharp
-builder.RegisterModule(new ModuleSentier(o => o
+services.AddSentier(o => o
     .UtiliserOracle("SENTIER")
     .BalayerAssemblyDe<Program>()
-    .UtiliserExecuteurSql<ExecuteurSqlAccesBDPlus>()));
+    .UtiliserExecuteurSql<ExecuteurSqlAccesBDPlus>());
 ```
 
 L'unité de travail n'enregistre alors **plus rien pour Sentier** : ni `IDbConnection`, ni `IDbTransaction` (inutile : le
@@ -342,7 +332,7 @@ public sealed class MesTaches(IDepotTaches depot) : IGestionnaireTachesSentier
 Si les tâches sont en base, utiliser la **même connexion et transaction** que Sentier (injecter `IDbConnection`
 ou `ISessionSentier`). Le balayage ignore les décorateurs (classes dont un constructeur reçoit un
 `IGestionnaireTachesSentier`). Sans indication, l'unique implémentation trouvée est enregistrée automatiquement ;
-`UtiliserGestionnaireTaches<T>()` est nécessaire s'il en reste plusieurs (sinon erreur au démarrage, même avec Autofac)
+`UtiliserGestionnaireTaches<T>()` est nécessaire s'il en reste plusieurs (sinon erreur au démarrage)
 ou si la classe est dans un assembly non balayé.
 
 ### 4.4 Plans de migration — `IPlanMigration`
@@ -402,7 +392,7 @@ Les vraies erreurs sont propagées : la transaction du client n'est pas validée
 
 ## 7. Liste de contrôle
 
-- [ ] `ModuleSentier` (ou `AddSentier`) avec préfixe, dialecte et `BalayerAssemblyDe<T>()` pour chaque assembly concerné.
+- [ ] `AddSentier` avec préfixe, dialecte et `BalayerAssemblyDe<T>()` pour chaque assembly concerné.
 - [ ] Une portée par unité de travail, avec l'`IDbConnection` ouverte dans un `TransactionScope` (Oracle), ou avec une `IDbTransaction` (§ 2, § 3.1) — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` et un `TransactionScope`, sans `IDbConnection` ni `IDbTransaction` (§ 3.2).
 - [ ] Une `DefinitionSentier` + `[ProcessusSentier]` par processus ; `DeployerDefinitionsAsync()` au démarrage.
 - [ ] Une `ICommandeSentier` par commande référencée ; une `IRequeteSentier` par décision calculée.

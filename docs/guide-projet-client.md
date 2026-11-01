@@ -44,8 +44,7 @@ Tous les types que le client implémente ou reçoit dans ses implémentations po
 
 | Package | Quand |
 |---|---|
-| `Sentier.Autofac` | Application sur Autofac. |
-| `Sentier.DependencyInjection` | Application sur `Microsoft.Extensions.DependencyInjection`. |
+| `Sentier.DependencyInjection` | Toute application, sur `Microsoft.Extensions.DependencyInjection` ou Autofac. |
 | `Sentier.Persistance` | Dépôts et dialectes (Oracle en production, SQLite pour les tests) ; amené par `Sentier.DependencyInjection`. |
 | `Microsoft.Data.Sqlite` | Projet de tests. |
 
@@ -60,31 +59,16 @@ Sentier ne travaille qu'avec `IDbConnection` : le fournisseur Oracle est celui q
 
 ## 3. Enregistrement dans l'injection de dépendances
 
-### Autofac
-
-```csharp
-var builder = new ContainerBuilder();
-
-builder.RegisterModule(new ModuleSentier(o => o
-    .UtiliserOracle("SENTIER")                 // UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<DemandeConge>()));      // une fois par assembly contenant processus, commandes, requêtes, bassin
-
-// Optionnels, APRÈS le module (ils remplacent ceux de Sentier) :
-builder.RegisterType<UtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalCommandes>().As<IIntercepteurCommandeSentier>().InstancePerLifetimeScope();
-
-var container = builder.Build();
-```
-
-### Microsoft.Extensions.DependencyInjection
-
 ```csharp
 services.AddScoped<IDbConnection>(_ => fabrique.Ouvrir());
 services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")
-    .BalayerAssemblyDe<DemandeConge>());
-services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();     // optionnel
+    .UtiliserOracle("SENTIER")                 // UtiliserSqlite("SENTIER") pour les tests
+    .BalayerAssemblyDe<DemandeConge>());       // une fois par assembly contenant processus, commandes, requêtes, bassin
+services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();      // optionnel
+services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();   // optionnel
 ```
+
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
 
 ### Ce que le balayage trouve (rien à enregistrer pour eux)
 
@@ -105,7 +89,7 @@ services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();     // option
 | `IHorlogeSentier` | Heure courante (tests des échéances). |
 | `ISerialiseurVariablesSentier` | Format de stockage des variables (JSON par défaut). |
 
-`AddSentier` et `ModuleSentier` n'enregistrent **jamais** d'`IDbConnection`.
+`AddSentier` n'enregistre **jamais** d'`IDbConnection`.
 
 ## 4. Unité de travail : connexion et transaction
 
@@ -425,8 +409,10 @@ Plusieurs batchs peuvent tourner en parallèle (verrouillage sans attente sous O
 Même code qu'en production ; seuls le dialecte et le bassin changent.
 
 ```csharp
+var services = new ServiceCollection();
+services.AddSentier(o => o.UtiliserSqlite("SENTIER").BalayerAssemblyDe<DemandeConge>());
 var builder = new ContainerBuilder();
-builder.RegisterModule(new ModuleSentier(o => o.UtiliserSqlite("SENTIER").BalayerAssemblyDe<DemandeConge>()));
+builder.Populate(services);
 builder.RegisterType<BassinTachesMemoire>().As<IGestionnaireTachesSentier>().InstancePerLifetimeScope();
 builder.RegisterInstance(horloge).As<IHorlogeSentier>();      // horloge de test pour avancer le temps
 var container = builder.Build();
@@ -491,7 +477,7 @@ chemin principal dans la suite du déroulement, exceptions dans les branches ; �
 ## 14. Liste de contrôle
 
 - [ ] Tables créées avec le bon préfixe (script DBA, ou `InstallerAsync` en test).
-- [ ] `ModuleSentier` / `AddSentier` avec le même préfixe et `BalayerAssemblyDe<…>()` pour chaque assembly concerné.
+- [ ] `AddSentier` avec le même préfixe et `BalayerAssemblyDe<…>()` pour chaque assembly concerné.
 - [ ] Une unité de travail qui enregistre l'`IDbConnection` (`ExternallyOwned`), ouverte dans un `TransactionScope` (Oracle) ou avec une `IDbTransaction`, et valide — ou, avec un wrapper maison, un adaptateur `IExecuteurSqlSentier` (`UtiliserExecuteurSql<T>()`) et un `TransactionScope`.
 - [ ] Une `DefinitionSentier` par processus, clé fixée par `[ProcessusSentier("cle")]`.
 - [ ] Commandes et requêtes dans un assembly balayé.

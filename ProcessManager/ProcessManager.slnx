@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/ProcessManager/ProcessManager.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/ProcessManager.Tests/ProcessManager.Tests.csproj" />
-  </Folder>
-</Solution>
