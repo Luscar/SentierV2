@@ -45,7 +45,6 @@ Tous les types que le client implémente ou reçoit dans ses implémentations po
 | Package | Quand |
 |---|---|
 | `Sentier.DependencyInjection` | Toute application, sur `Microsoft.Extensions.DependencyInjection` ou Autofac. |
-| `Autofac.Extensions.DependencyInjection` | Application sur Autofac (déjà présent en général). |
 | `Sentier.Persistance` | Dépôts et dialectes (Oracle en production, SQLite pour les tests) ; amené par `Sentier.DependencyInjection`. |
 | `Microsoft.Data.Sqlite` | Projet de tests. |
 
@@ -60,36 +59,16 @@ Sentier ne travaille qu'avec `IDbConnection` : le fournisseur Oracle est celui q
 
 ## 3. Enregistrement dans l'injection de dépendances
 
-### Autofac
-
-Sous ASP.NET Core / Generic Host avec `AutofacServiceProviderFactory` : `services.AddSentier(...)` comme ci-dessous
-(section suivante). Avec un `ContainerBuilder` seul :
-
-```csharp
-var services = new ServiceCollection();
-services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")                 // UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<DemandeConge>());       // une fois par assembly contenant processus, commandes, requêtes, bassin
-
-var builder = new ContainerBuilder();
-builder.Populate(services);                    // Autofac.Extensions.DependencyInjection
-
-// Optionnels, APRÈS Populate (ils remplacent ceux de Sentier) :
-builder.RegisterType<UtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-builder.RegisterType<JournalCommandes>().As<IIntercepteurCommandeSentier>().InstancePerLifetimeScope();
-
-var container = builder.Build();
-```
-
-### Microsoft.Extensions.DependencyInjection
-
 ```csharp
 services.AddScoped<IDbConnection>(_ => fabrique.Ouvrir());
 services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")
-    .BalayerAssemblyDe<DemandeConge>());
-services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();     // optionnel
+    .UtiliserOracle("SENTIER")                 // UtiliserSqlite("SENTIER") pour les tests
+    .BalayerAssemblyDe<DemandeConge>());       // une fois par assembly contenant processus, commandes, requêtes, bassin
+services.AddScoped<IContexteUtilisateurSentier, UtilisateurWeb>();      // optionnel
+services.AddScoped<IIntercepteurCommandeSentier, JournalCommandes>();   // optionnel
 ```
+
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
 
 ### Ce que le balayage trouve (rien à enregistrer pour eux)
 

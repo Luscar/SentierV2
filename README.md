@@ -34,23 +34,9 @@ services.AddSentier(o =>
 });
 ```
 
-Avec **Autofac**, il n'y a pas de package dédié : `AddSentier` passe par `Autofac.Extensions.DependencyInjection`.
-Sous ASP.NET Core / Generic Host avec `AutofacServiceProviderFactory`, appeler simplement `services.AddSentier(...)`.
-Avec un `ContainerBuilder` seul :
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
 
-```csharp
-var services = new ServiceCollection();
-services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")            // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<Program>());       // définitions, commandes, requêtes, gestionnaire de tâches
-
-var builder = new ContainerBuilder();
-builder.Populate(services);               // Autofac.Extensions.DependencyInjection
-
-_container = builder.Build();
-```
-
-`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`. Un service enregistré dans le `ContainerBuilder` **après** `Populate` (`IHorlogeSentier`, `IContexteUtilisateurSentier`…) remplace celui de Sentier.
+`UtiliserOracle(prefixe)` et `UtiliserSqlite(prefixe)` renseignent aussi `PrefixeTables`.
 
 `AddSentier` n'enregistre **jamais** d'`IDbConnection`. Services optionnels à enregistrer par le client : `IContexteUtilisateurSentier` (utilisateur courant, pour l'audit), `IIntercepteurCommandeSentier`, `IIntercepteurRequeteSentier`, et un `IHorlogeSentier` ou `ISerialiseurVariablesSentier` personnalisé.
 

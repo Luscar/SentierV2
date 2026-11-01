@@ -34,7 +34,6 @@ Ce guide mène une application cliente de l'installation au premier processus ex
 | Package | Quand |
 |---|---|
 | `Sentier.DependencyInjection` | Toute application (inclut les dialectes), y compris sur **Autofac**. |
-| `Autofac.Extensions.DependencyInjection` | Application sur **Autofac** (déjà présent en général). |
 | `Microsoft.Data.Sqlite` | Projet de tests. |
 
 Le fournisseur Oracle (ODP.NET) est celui que l'application utilise déjà : Sentier ne travaille qu'avec `IDbConnection`.
@@ -57,34 +56,15 @@ Choisir un **préfixe** (lettres, chiffres, `_`, 12 caractères au plus) : toute
 
 ## 4. Enregistrer Sentier
 
-### Avec Autofac
-
-Sous ASP.NET Core / Generic Host avec `AutofacServiceProviderFactory`, appeler simplement `services.AddSentier(...)`
-(section suivante). Avec un `ContainerBuilder` seul :
-
-```csharp
-var services = new ServiceCollection();
-services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")              // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
-    .BalayerAssemblyDe<Program>());         // définitions, commandes, requêtes, gestionnaire de tâches
-
-var builder = new ContainerBuilder();
-builder.Populate(services);                 // Autofac.Extensions.DependencyInjection
-
-// Services optionnels, enregistrés APRÈS Populate pour remplacer ceux de Sentier :
-builder.RegisterType<ContexteUtilisateurWeb>().As<IContexteUtilisateurSentier>().InstancePerLifetimeScope();
-
-_container = builder.Build();
-```
-
-### Avec Microsoft.Extensions.DependencyInjection
-
 ```csharp
 services.AddScoped<IDbConnection>(_ => OuvrirConnexionOracle());
 services.AddSentier(o => o
-    .UtiliserOracle("SENTIER")
-    .BalayerAssemblyDe<Program>());
+    .UtiliserOracle("SENTIER")              // préfixe des tables ; UtiliserSqlite("SENTIER") pour les tests
+    .BalayerAssemblyDe<Program>());         // définitions, commandes, requêtes, gestionnaire de tâches
+services.AddScoped<IContexteUtilisateurSentier, ContexteUtilisateurWeb>();   // optionnel
 ```
+
+**Autofac** : rien de plus avec `AutofacServiceProviderFactory` ; avec un `ContainerBuilder` seul, `builder.Populate(services)` après `AddSentier` (`Autofac.Extensions.DependencyInjection`). Un service enregistré dans le `ContainerBuilder` après `Populate` remplace celui de Sentier.
 
 ### Ce qui est découvert par balayage
 
