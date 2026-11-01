@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Tests unitaires du cœur : aucune base de données, aucune injection de dépendances. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sentier.Core\Sentier.Core.csproj" />
+  </ItemGroup>
+
+</Project>
