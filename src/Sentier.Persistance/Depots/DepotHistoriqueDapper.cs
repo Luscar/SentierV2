@@ -9,9 +9,16 @@ internal sealed class DepotHistoriqueDapper(ContexteSql sql) : IDepotHistorique
 
     private string Table => sql.Noms.HistNoeud;
 
+    public async Task<IdPassageNoeud> ReserverIdAsync(CancellationToken ct)
+        => new(await sql.ProchainIdAsync(sql.Noms.SeqHistNoeud, ct));
+
     public async Task InsererAsync(PassageNoeud passage, CancellationToken ct)
     {
-        passage.Id = new IdPassageNoeud(await sql.ProchainIdAsync(sql.Noms.SeqHistNoeud, ct));
+        if (passage.Id == default)
+        {
+            passage.Id = await ReserverIdAsync(ct);
+        }
+
         await sql.ExecuterAsync(
             $"INSERT INTO {Table} ({Colonnes}) VALUES (@id, @idInstance, @codeNoeud, @typeNoeud, @dateEntree, @dateSortie, @resultat)",
             new

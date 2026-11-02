@@ -24,7 +24,7 @@ internal sealed class ExecuteurAppels(
     {
         foreach (var appel in appels)
         {
-            await ExecuterCommandeAsync(appel, contexte.Instance, contexte.Noeud.Code, contexte.Variables, moment, donneesTache, contexte.Utilisateur, ct);
+            await ExecuterCommandeAsync(appel, contexte.Instance, contexte.Noeud.Code, contexte.Variables, moment, donneesTache, contexte.IdPassage, contexte.Utilisateur, ct);
         }
     }
 
@@ -35,6 +35,7 @@ internal sealed class ExecuteurAppels(
         VariablesProcessus variables,
         MomentCommande moment,
         IReadOnlyDictionary<string, object?>? donneesTache,
+        IdPassageNoeud? idPassage,
         string? utilisateur,
         CancellationToken ct)
     {
@@ -42,7 +43,7 @@ internal sealed class ExecuteurAppels(
         var commande = (ICommandeSentier)services.GetRequiredService(type);
         var libelle = $"Commande '{appel.Nom}' du nœud '{codeNoeud}'";
         var parametres = new ParametresResolus(libelle, ResoudreParametres(appel.Parametres, instance, variables, libelle));
-        var contexte = new ContexteCommandeSentier(instance, codeNoeud, moment, parametres, variables, donneesTache, utilisateur);
+        var contexte = new ContexteCommandeSentier(instance, codeNoeud, moment, parametres, variables, donneesTache, idPassage, utilisateur);
 
         Func<Task> executer = () => commande.ExecuterAsync(contexte, ct);
         for (var i = _intercepteursCommande.Length - 1; i >= 0; i--)

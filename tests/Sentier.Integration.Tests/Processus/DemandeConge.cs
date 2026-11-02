@@ -43,6 +43,7 @@ public sealed class CalculerSolde(ServicesMetier metier) : ICommandeSentier
         var employe = contexte.Parametres.Lire<long>("employe");
         contexte.Variables.Ecrire(DemandeConge.Solde, metier.Soldes.GetValueOrDefault(employe));
         metier.Noter($"calculer-solde:{employe}");
+        metier.Noter($"passage:calculer-solde:{contexte.IdPassageNoeud}");
         return Task.CompletedTask;
     }
 }
@@ -52,6 +53,7 @@ public sealed class JournaliserDecision(ServicesMetier metier) : CommandeSentier
     protected override Task ExecuterAsync(ContexteCommandeSentier contexte, Parametres parametres, CancellationToken ct)
     {
         metier.Noter($"decision:{contexte.CleAffaire}:{parametres.Decision}:{contexte.Utilisateur}");
+        metier.Noter($"passage:{contexte.CodeNoeud}:{contexte.IdPassageNoeud}");
         return Task.CompletedTask;
     }
 

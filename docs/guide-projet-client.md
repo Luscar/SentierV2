@@ -252,9 +252,10 @@ public sealed class DossierComplet(IDepotDossiers dossiers) : RequeteSentier<Par
 | `Variables` | `Lire(V)`, `TryLire`, `LireOuDefaut`, `Ecrire(V, valeur)`, `Effacer`. |
 | `Moment` | `Execution`, `Entree`, `Sortie`, `Migration`. |
 | `DonneesTache` | Données de complétion (commande de sortie d'un interactif). |
+| `IdPassageNoeud` | Passage du nœud (instance de nœud) : unique par exécution, commun aux commandes d'entrée et de sortie d'un même passage ; `null` en migration. Clé d'idempotence d'une tâche systémique. |
 | `Utilisateur` | Auteur de l'action. |
 
-`ContexteRequeteSentier` : la même chose en lecture seule, sans `Moment`, `DonneesTache` ni `Utilisateur`.
+`ContexteRequeteSentier` : la même chose en lecture seule, sans `Moment`, `DonneesTache`, `IdPassageNoeud` ni `Utilisateur`.
 
 Règles :
 

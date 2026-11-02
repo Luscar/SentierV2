@@ -73,6 +73,11 @@ public sealed class DemandeCongeTests : IAsyncLifetime
         Assert.Equal("approuvee", fin.CodeFin);
         Assert.Contains($"decision:{Employe}:approuvee:gestionnaire1", _env.Metier.Journal);
 
+        // Chaque commande reçoit l'identifiant du passage (instance de nœud) qui l'exécute, tel qu'enregistré dans l'historique.
+        var passages = await _env.HistoriqueAsync(depart.IdInstance!.Value);
+        Assert.Contains($"passage:calculer-solde:{passages.Single(p => p.CodeNoeud == "calculer-solde").Id}", _env.Metier.Journal);
+        Assert.Contains($"passage:{DemandeConge.NoeudApprobation}:{passages.Single(p => p.CodeNoeud == DemandeConge.NoeudApprobation).Id}", _env.Metier.Journal);
+
         var instance = await _env.InstanceAsync(depart.IdInstance!.Value);
         Assert.Equal("approuvee", instance.Variables["decision"]);
         Assert.False(instance.Variables.ContainsKey("inconnue"));

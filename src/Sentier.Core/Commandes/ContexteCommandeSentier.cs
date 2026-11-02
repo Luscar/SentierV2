@@ -12,6 +12,7 @@ public sealed class ContexteCommandeSentier
         ParametresResolus parametres,
         VariablesProcessus variables,
         IReadOnlyDictionary<string, object?>? donneesTache,
+        IdPassageNoeud? idPassageNoeud,
         string? utilisateur)
     {
         Instance = instance;
@@ -20,6 +21,7 @@ public sealed class ContexteCommandeSentier
         Parametres = parametres;
         Variables = variables;
         DonneesTache = donneesTache;
+        IdPassageNoeud = idPassageNoeud;
         Utilisateur = utilisateur;
     }
 
@@ -49,6 +51,13 @@ public sealed class ContexteCommandeSentier
 
     /// <summary>Données de la tâche complétée (sortie d'un nœud interactif), sinon <c>null</c>.</summary>
     public IReadOnlyDictionary<string, object?>? DonneesTache { get; }
+
+    /// <summary>
+    /// Passage du nœud qui exécute la commande (l'« instance de nœud ») : unique par exécution du nœud,
+    /// identique pour les commandes d'entrée et de sortie d'un même passage, et nouveau à chaque relance ou boucle.
+    /// <c>null</c> seulement pour les commandes de migration. C'est la clé à utiliser pour l'idempotence d'une tâche systémique.
+    /// </summary>
+    public IdPassageNoeud? IdPassageNoeud { get; }
 
     /// <summary>Utilisateur courant, si disponible.</summary>
     public string? Utilisateur { get; }

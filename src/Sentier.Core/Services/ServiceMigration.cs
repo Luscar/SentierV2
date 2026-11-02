@@ -394,7 +394,7 @@ internal sealed class ServiceMigration(
         var variables = new VariablesProcessus(cible.Declarations, analyse.Variables);
         foreach (var commande in plan?.CommandesVariables ?? [])
         {
-            await appels.ExecuterCommandeAsync(commande, instance, codeSource, variables, MomentCommande.Migration, null, utilisateur, ct);
+            await appels.ExecuterCommandeAsync(commande, instance, codeSource, variables, MomentCommande.Migration, null, null, utilisateur, ct);
         }
 
         var manquantes = cible.Variables.Where(d => d.Obligatoire && !variables.Contient(d.Nom)).Select(d => d.Nom).ToList();

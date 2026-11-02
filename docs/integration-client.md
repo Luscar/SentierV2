@@ -238,7 +238,7 @@ public interface ICommandeSentier
 ```
 
 `ContexteCommandeSentier` : `Instance`, `IdInstance`, `CleProcessus`, `CleAffaire`, `CodeNoeud`, `Moment` (`Execution`, `Entree`,
-`Sortie`, `Migration`), `Parametres`, `Variables` (lecture et écriture), `DonneesTache` (commande de sortie), `Utilisateur`.
+`Sortie`, `Migration`), `Parametres`, `Variables` (lecture et écriture), `DonneesTache` (commande de sortie), `IdPassageNoeud` (instance de nœud : unique par exécution du nœud, clé d'idempotence d'une tâche systémique ; `null` en migration), `Utilisateur`.
 
 Avec paramètres typés, dériver de `CommandeSentier<TParametres>` (liaison par nom de propriété) :
 

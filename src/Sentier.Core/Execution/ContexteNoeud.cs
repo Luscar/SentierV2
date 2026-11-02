@@ -6,7 +6,7 @@ namespace Sentier.Execution;
 /// <summary>Contexte d'exécution d'un nœud.</summary>
 public sealed class ContexteNoeud
 {
-    internal ContexteNoeud(InstanceProcessus instance, DefinitionProcessus definition, Noeud noeud, VariablesProcessus variables, string? utilisateur, MoteurSentier moteur)
+    internal ContexteNoeud(InstanceProcessus instance, DefinitionProcessus definition, Noeud noeud, VariablesProcessus variables, string? utilisateur, MoteurSentier moteur, IdPassageNoeud? idPassage = null)
     {
         Instance = instance;
         Definition = definition;
@@ -14,6 +14,7 @@ public sealed class ContexteNoeud
         Variables = variables;
         Utilisateur = utilisateur;
         Moteur = moteur;
+        IdPassage = idPassage;
     }
 
     /// <summary>Instance en cours.</summary>
@@ -30,6 +31,9 @@ public sealed class ContexteNoeud
 
     /// <summary>Utilisateur courant, si disponible.</summary>
     public string? Utilisateur { get; }
+
+    /// <summary>Passage (instance de nœud) en cours : réservé à l'entrée, retrouvé à la reprise.</summary>
+    public IdPassageNoeud? IdPassage { get; }
 
     internal MoteurSentier Moteur { get; }
 }

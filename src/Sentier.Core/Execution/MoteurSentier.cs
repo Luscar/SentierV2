@@ -122,7 +122,8 @@ internal sealed class MoteurSentier
         try
         {
             var noeud = execution.Definition.Noeud(instance.CodeNoeudCourant);
-            resultat = await Executeur(noeud).ReprendreAsync(Contexte(execution, noeud), evenement, ct);
+            var idPassage = await PassageOuvertAsync(instance, noeud.Code, ct);
+            resultat = await Executeur(noeud).ReprendreAsync(Contexte(execution, noeud, idPassage), evenement, ct);
         }
         finally
         {
@@ -249,8 +250,15 @@ internal sealed class MoteurSentier
     internal Task<IReadOnlyList<InstanceProcessus>> InstancesActivesAsync(string cleProcessus, long cleAffaire, CancellationToken ct)
         => _instances.ObtenirActivesAsync(cleProcessus, cleAffaire, ct);
 
-    internal ContexteNoeud Contexte(ExecutionInstance execution, Noeud noeud)
-        => new(execution.Instance, execution.Definition, noeud, execution.Variables, execution.Utilisateur, this);
+    internal ContexteNoeud Contexte(ExecutionInstance execution, Noeud noeud, IdPassageNoeud? idPassage = null)
+        => new(execution.Instance, execution.Definition, noeud, execution.Variables, execution.Utilisateur, this, idPassage);
+
+    /// <summary>Passage encore ouvert (nœud suspendu) de l'instance sur le nœud donné, s'il existe.</summary>
+    private async Task<IdPassageNoeud?> PassageOuvertAsync(InstanceProcessus instance, string codeNoeud, CancellationToken ct)
+    {
+        var passages = await _historique.ObtenirAsync(instance.Id, ct);
+        return passages.LastOrDefault(p => p.DateSortie is null && p.CodeNoeud == codeNoeud)?.Id;
+    }
 
     private async Task<ExecutionInstance> PreparerAsync(InstanceProcessus instance, string? utilisateur, CancellationToken ct)
     {
@@ -295,10 +303,12 @@ internal sealed class MoteurSentier
 
                     var noeud = definition.Noeud(instance.CodeNoeudCourant);
                     var dateEntree = Horloge.MaintenantUtc;
-                    resultat = await Executeur(noeud).EntrerAsync(Contexte(execution, noeud), ct);
+                    var idPassage = await _historique.ReserverIdAsync(ct);
+                    resultat = await Executeur(noeud).EntrerAsync(Contexte(execution, noeud, idPassage), ct);
                     var suspendu = resultat is ResultatSuspendre;
                     await _historique.InsererAsync(new PassageNoeud
                     {
+                        Id = idPassage,
                         IdInstance = instance.Id,
                         CodeNoeud = noeud.Code,
                         TypeNoeud = noeud.Type,
