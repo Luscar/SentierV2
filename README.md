@@ -357,4 +357,22 @@ Points non tranchés par la spécification, résolus au plus simple :
 - **SQLite** : dates stockées en texte, séquences émulées par `{Prefixe}_SEQUENCE`, clés étrangères actives seulement avec `PRAGMA foreign_keys = ON`.
 - **Cache** : les versions de définitions sont gardées en mémoire par identifiant, sans invalidation (singleton par conteneur DI).
 
-Hors périmètre de cette itération : tests, passerelles parallèles, événements de bordure, compensation, escalade des tâches, éditeur graphique et import BPMN.
+Hors périmètre de cette itération : passerelles parallèles, événements de bordure, compensation, escalade des tâches, éditeur graphique et import BPMN.
+
+## 12. Tests
+
+```bash
+dotnet test                                   # toute la solution
+dotnet test tests/Sentier.Integration.Tests   # un seul projet
+```
+
+| Projet | Nature | Ce qui est couvert |
+|---|---|---|
+| `Sentier.Core.Tests` | unitaire, sans base | variables (conversion, comparaison, sérialisation JSON), constructeur fluide et validation des définitions, export Mermaid, options |
+| `Sentier.DependencyInjection.Tests` | unitaire, sans base | `AddSentier` : services enregistrés, balayage, choix du gestionnaire de tâches, remplacement de l'exécuteur SQL, de la session et de l'horloge |
+| `Sentier.Persistance.Tests` | unitaire + garde SQLite | dialectes Oracle/SQLite, noms d'objets, découpage des scripts, compatibilité avec un traducteur Oracle → SQLite |
+| `Sentier.Integration.Tests` | intégré, de bout en bout | vrai conteneur, vrais dépôts Dapper, base SQLite en mémoire et transactions du client : tâches, décisions, signaux et corrélation, échéances et batch, erreurs et reprise, sous-processus, annulations, versions de définitions, suivi |
+
+Les tests intégrés partent chacun d'une base vide (`Infrastructure/EnvironnementSentier`). Le gestionnaire de tâches de
+test écrit dans une table de la même base et dans la transaction de Sentier, comme une application réelle ; l'horloge est
+pilotée par le test (`HorlogeTest.Avancer`) pour déclencher les échéances.

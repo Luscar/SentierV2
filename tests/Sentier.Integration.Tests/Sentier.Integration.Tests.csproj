@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tests intégrés de bout en bout : vrai conteneur (AddSentier), vrais dépôts Dapper, base SQLite en mémoire,
+    transactions du client. Chaque test part d'une base vide.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sentier.DependencyInjection\Sentier.DependencyInjection.csproj" />
+    <ProjectReference Include="..\..\src\Sentier.Persistance\Sentier.Persistance.csproj" />
+  </ItemGroup>
+
+</Project>
